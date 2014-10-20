@@ -1,0 +1,8 @@
+
+bigquery_credentials.dat
+
+*.pyc
+
+processed/*
+
+selectors

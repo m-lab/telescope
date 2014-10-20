@@ -1,0 +1,23 @@
+{
+   "file_format_version": 1,
+   "duration": "30d",
+   "metric":"download_throughput",
+   "ip_translation":{
+     "strategy":"maxmind",
+     "params":{
+       "db_snapshots":["2014-08-04"]
+     }
+   },
+   "subsets":[
+      {
+         "site":"lga02",
+         "client_provider":"comcast",
+         "start_time":"2014-02-01T00:00:00Z"
+      },
+      {
+         "site":"lga02",
+         "client_provider":"cablevision",
+         "start_time":"2014-02-01T00:00:00Z"
+      }
+   ]
+}
