@@ -96,10 +96,7 @@ def get_site_transit(site_id):
       'ord02': 'cogent',
       'sea01': 'cogent',
       }
-  if site_transit_map.has_key(site_id):
-    return site_transit_map[site_id]
-
-  return None
+  return site_transit_map.get(site_id, None)
 
 def parse_pt_data(input_data):
   """ Takes in all paris-traceroute data returned from a query and transforms
