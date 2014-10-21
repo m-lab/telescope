@@ -50,12 +50,30 @@ class MLabServerResolutionFailed(Exception):
                            error_message = inner_exception.message))
 
 class ExternalQueryHandler:
+  """ Monitors external jobs in BigQuery and retrieves and processed the
+      resulting data when the job completes.
+  """
+
   def __init__(self):
     self.result = False
     self.metadata = None
     self.fatal_error = None
 
   def retrieve_data_upon_job_completion(self, job_id, query_object = None):
+    """ Waits for a BigQuery job to complete, then retrieves the data, runs
+        appropriate filtering on the data, and writes the result to an output
+        data file.
+
+        Args:
+          job_id (str): ID of job for which to retrieve data.
+
+          query_object (telescope.external.BigQueryCall): Query object
+            responsible for retrieving data from BigQuery.
+
+        Returns:
+          (bool) True if data was successfully retrieved, processed, and
+          written to file, False otherwise.
+    """
     logger = logging.getLogger('telescope')
     self.result = False
 
@@ -88,7 +106,17 @@ class ExternalQueryHandler:
         self.fatal_error = True
     return self.result
 
+
 def setup_logger(verbosity_level = 0):
+  """ Create and configure application logging mechanism.
+
+      Args:
+        verbosity_level (int): Specifies how much information to log. 0 logs
+        informational messages and below. Values > 0 log all messages.
+
+      Returns:
+        (logging.Logger): Logger object for the application.
+  """
   logger = logging.getLogger('telescope')
   console_handler = logging.StreamHandler()
   logger.addHandler(console_handler)
@@ -99,11 +127,8 @@ def setup_logger(verbosity_level = 0):
     logger.setLevel(logging.INFO)
   return logger
 
-def create_directory_if_not_exists(passed_selector):
-  """ extant_file
-      'Type' for argparse - checks that file exists but does not open.
 
-  """
+def create_directory_if_not_exists(passed_selector):
   if not os.path.exists(passed_selector):
     try:
       os.makedirs(passed_selector)
@@ -114,6 +139,20 @@ def create_directory_if_not_exists(passed_selector):
 
 
 def write_metric_calculations_to_file(data_filepath, metric_calculations, should_write_header = False):
+  """ Writes metric data to a file in CSV format.
+
+      Args:
+        data_filepath (str): File path to which to write data.
+
+        metric_calculations (list): A list of dictionaries containing the
+        values of retrieved metrics.
+
+        should_write_header (bool): Indicates whether the output file should
+        contain a header line to identify each column of data.
+
+      Returns:
+        (bool) True if the file was written successfully, False otherwise.
+  """
   logger = logging.getLogger('telescope')
   try:
     with open(data_filepath, 'w') as data_file_raw:
@@ -140,7 +179,35 @@ def write_metric_calculations_to_file(data_filepath, metric_calculations, should
                     "cannot move on.").format(error = caught_error))
   return False
 
+
 def build_filename(resource_type, outpath, date, duration, site, client_provider, metric):
+  """ Builds an output filename that reflects the data being written to file.
+
+      Args:
+        resource_type (str): Indicates what type of data will be stored in the
+        file.
+
+        outpath (str): Indicates the path (excluding filename) where the file
+        will be written.
+
+        date (str): A string indicating the start time of the data window the
+        file represents.
+
+        duration (str): A string indicating the duration of the data window the
+        file represents.
+
+        site (str): The name of the M-Lab site from which the data was collected
+        (e.g. lga01)
+
+        client_provider (str): The name of the client provider associated with
+        the test results.
+
+        metric (str): The name of the metric this data represents (e.g.
+        download_throughput).
+
+     Returns:
+       (str): The generated full pathname of the output file.
+  """
   extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql'}
   filename_format = "{date}+{duration}_{site}_{client_provider}_{metric}-{extension}"
 
@@ -153,7 +220,18 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
   filepath = os.path.join(outpath, filename)
   return filepath
 
+
 def write_bigquery_to_file(bigquery_filepath, query_string):
+  """ Writes BigQuery query string to a file.
+
+      Args:
+        bigquery_filepath (str): Output file path.
+
+        query_string (str): BigQuery query string to write to file.
+
+      Returns:
+        (bool) True if query was written to file successfully, False otherwise.
+  """
   logger = logging.getLogger('telescope')
   try:
     with open(bigquery_filepath, 'w') as bigquery_file_raw:
@@ -164,7 +242,18 @@ def write_bigquery_to_file(bigquery_filepath, query_string):
 
   return False
 
+
 def selectors_from_files(selector_files):
+  """ Parses Selector objects from a list of selector files.
+
+      N.B.: Parsing errors are logged, but do not cause the function to fail.
+
+      Args:
+        slector_files (list): A list of filenames of selector files.
+
+      Returns:
+        (list): A list of Selector objects that were successfully parsed.
+  """
   logger = logging.getLogger('telescope')
   parser = telescope.selector.SelectorFileParser()
   selectors = []
@@ -228,6 +317,17 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
   return (query_generator.query(), query_generator.table_span())
 
 def duration_to_string(duration_seconds):
+  """ Serializes an amount of time in seconds to a human-readable string
+      representing the time in days, hours, minutes, and seconds.
+
+      Args:
+        duration_seconds (int): Total number of seconds.
+
+      Returns:
+        (str): The amount of time represented in a human-readable shorthand
+        string.
+
+  """
   duration_string = ''
   remaining_seconds = int(duration_seconds)
 
@@ -252,6 +352,32 @@ def duration_to_string(duration_seconds):
   return duration_string
 
 def process_selector_queue(selector_queue, google_auth_config, batchmode = 'automatic', max_tables_without_batch = 2, concurrent_thread_limit = 18):
+  """ Processes the queue of Selector objects by launching BigQuery jobs for
+      each Selector and spawning threads to gather the results. Enforces query
+      rate limits so that queue processing obeys limits on maximum simultaneous
+      threads.
+
+      Args:
+        selector_queue (Queue.Queue): A queue of Selector objects to process.
+
+        google_auth_config (external.GoogleAPIAuth): Object containing
+        GoogleAPI auth data.
+
+        batchmode (str): Indicates the batch mode to operate under.
+
+        max_tables_without_batch (int): When batchmode is set to 'query', this
+        indicates the maximum number of database tables that can appear in the
+        SELECT portion of a query before the job is automatically converted to
+        batch mode.
+
+        concurrent_thread_limit: Indicates the maximum number of threads to run
+        when batchmode is not set to 'all'.
+
+      Returns:
+        (list): A list of 2-tuples where the first element is the spawned
+        worker thread that waits on query results and the second element is the
+        object that stores the results of the query.
+  """
   logger = logging.getLogger('telescope')
   thread_monitor = []
 
