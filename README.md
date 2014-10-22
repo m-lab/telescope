@@ -40,3 +40,7 @@ To create a project:
 1. When OAuth authentication completes, Telescope will perform the queries specified by the selector file. The queries may take between 45 seconds and 10 minutes to comlete.
 
 When all queries complete, the results will be placed in the `processed/` folder. Each output file will contain results for the specified metric in CSV format of (UNIX timestamp, value).
+
+**Working with Selector Files**
+
+Telescope takes as input "selector files," which specify what data to retrieve. Example selector files are available in `documentation/examples`. It is simple to modify these example selector files to instruct Telescope to retrieve the data of your choice. Full documentation of selector files is available in `documentation/selector-file-spec.md`.
