@@ -77,26 +77,6 @@ class MLabSiteResolver(object):
     self._cache[hostname] = ip_address
     return ip_address
 
-def get_site_transit(site_id):
-  site_transit_map = {
-      'atl01': 'level3',
-      'atl02': 'cogent',
-      'dfw01': 'cogent',
-      'iad01': 'xo',
-      'iad02': 'cogent',
-      'lax01': 'cogent',
-      'lga01': 'internap',
-      'lga02': 'cogent',
-      'mia01': 'level3',
-      'mia02': 'cogent',
-      'nuq01': 'google',
-      'nuq02': 'isc',
-      'nuq03': 'cogent',
-      'ord01': 'level3',
-      'ord02': 'cogent',
-      'sea01': 'cogent',
-      }
-  return site_transit_map.get(site_id, None)
 
 def parse_pt_data(input_data):
   """ Takes in all paris-traceroute data returned from a query and transforms
