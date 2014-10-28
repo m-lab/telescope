@@ -150,22 +150,22 @@ class BigQueryQueryGenerator:
     for field in non_null_fields:
       non_null_conditions.append('%s IS NOT NULL' % field)
 
-    select_list_string = ", \n\t".join(self._select_list)
+    select_list_string = ",\n\t".join(self._select_list)
     table_list_string = ',\n\t'.join(self._table_list)
 
-    conditional_list_string = " \n\tAND ".join(non_null_conditions + tool_specific_conditions)
+    conditional_list_string = "\n\tAND ".join(non_null_conditions + tool_specific_conditions)
 
     if self._conditional_dict.has_key('data_direction') is True:
       conditional_list_string += "\n\tAND {data_direction}".format(
           data_direction = self._conditional_dict['data_direction'])
 
-    log_times_joined = " OR \n\t".join(self._conditional_dict['log_time'])
+    log_times_joined = " OR\n\t".join(self._conditional_dict['log_time'])
     conditional_list_string += "\n\tAND ({log_times})".format(log_times = log_times_joined)
 
-    server_ips_joined = " OR \n\t\t".join(self._conditional_dict['server_ip'])
+    server_ips_joined = " OR\n\t\t".join(self._conditional_dict['server_ip'])
     conditional_list_string += "\n\tAND ({server_ips})".format(server_ips = server_ips_joined)
 
-    client_ips_joined = " OR \n\t\t".join(self._conditional_dict['client_network_block'])
+    client_ips_joined = " OR\n\t\t".join(self._conditional_dict['client_network_block'])
     conditional_list_string += "\n\tAND ({client_ips})".format(client_ips = client_ips_joined)
 
     built_query_string = built_query_format.format(select_list = select_list_string,
