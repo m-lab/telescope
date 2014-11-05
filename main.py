@@ -128,14 +128,14 @@ def setup_logger(verbosity_level = 0):
   return logger
 
 
-def create_directory_if_not_exists(passed_selector):
-  if not os.path.exists(passed_selector):
+def create_directory_if_not_exists(directory_name):
+  if not os.path.exists(directory_name):
     try:
-      os.makedirs(passed_selector)
+      os.makedirs(directory_name)
     except OSError:
       raise argparse.ArgumentError(('{0} does not exist, is not readable or '
-                                    'could not be created.').format(passed_selector))
-  return passed_selector
+                                    'could not be created.').format(directory_name))
+  return directory_name
 
 
 def write_metric_calculations_to_file(data_filepath, metric_calculations, should_write_header = False):
