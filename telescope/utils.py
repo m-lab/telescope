@@ -56,7 +56,8 @@ def strip_special_chars(filename):
   """ Removes shell special characters from a filename.
 
       Args:
-        filename (str): Filename to be sanitized.
+        filename (str): Filename to be sanitized. Note that this should be a single
+          filename and not a full path, as this will strip path separators.
 
       Returns:
         (str) Sanitized version of filename.
