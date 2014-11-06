@@ -29,12 +29,13 @@ import Queue
 
 from ssl import SSLError
 
-import telescope.selector
-import telescope.query
+import telescope.external
+import telescope.filters
 import telescope.metrics_math
 import telescope.mlab
-import telescope.filters
-import telescope.external
+import telescope.query
+import telescope.selector
+import telescope.utils
 
 
 class NoClientNetworkBlocksFound(Exception):
@@ -128,16 +129,6 @@ def setup_logger(verbosity_level = 0):
   return logger
 
 
-def create_directory_if_not_exists(directory_name):
-  if not os.path.exists(directory_name):
-    try:
-      os.makedirs(directory_name)
-    except OSError:
-      raise argparse.ArgumentError(('{0} does not exist, is not readable or '
-                                    'could not be created.').format(directory_name))
-  return directory_name
-
-
 def write_metric_calculations_to_file(data_filepath, metric_calculations, should_write_header = False):
   """ Writes metric data to a file in CSV format.
 
@@ -217,6 +208,7 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
                                     client_provider = client_provider,
                                     metric = metric,
                                     extension = extensions[resource_type])
+  filename = telescope.utils.strip_special_chars(filename)
   filepath = os.path.join(outpath, filename)
   return filepath
 
@@ -550,7 +542,7 @@ if __name__ == "__main__":
                         help="variable output verbosity (e.g., -vv is more than -v)")
   parser.add_argument('-o', '--output', default='processed/',
                         help='Output file path. If the folder does not exist, it will be created.',
-                        type=create_directory_if_not_exists)
+                        type=telescope.utils.create_directory_if_not_exists)
   parser.add_argument('--maxminddir', default='resources/', help='MaxMind GeoLite ASN snapshot directory.')
   parser.add_argument('--savequery', default=False, action='store_true',
                         help='Save the BigQuery statement to the [output] directory as a .sql')
