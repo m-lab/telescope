@@ -85,6 +85,20 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
                                    server_ips,
                                    client_ip_blocks)
 
+  def testNdtQueriesHaveNoTrailingWhitespace(self):
+    start_time = datetime.datetime(2012, 1, 1)
+    end_time = datetime.datetime(2014, 10, 15)
+    server_ips = ['1.1.1.1', '2.2.2.2']
+    client_ip_blocks = [
+        (5, 10),
+        (35, 80)
+        ]
+    query_generators = (self.generate_average_rtt_query, self.generate_minimum_rtt_query,
+                        self.generate_upload_throughput_query, self.generate_download_throughput_query)
+    for query_generator in query_generators:
+      generated_query = query_generator(start_time, end_time, server_ips, client_ip_blocks)
+      self.assertNotRegexpMatches(generated_query, '.*\s\n')
+
   def testNdtDownloadThroughputQueryFullMonth(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1)
