@@ -35,6 +35,7 @@ class Selector(object):
     self.duration = None
     self.metric = None
     self.ip_translation_spec = None
+    self.country_code = None
     self.client_provider = None
     self.site_name = None
     self.mlab_project = None
@@ -65,7 +66,8 @@ class SelectorFileParser(object):
                       }
 
   supported_file_format_versions = {'minimum': 1, 'maximum': 1}
-  supported_subset_keys = ["start_time", "client_provider", "site"]
+  supported_data_selector_keys = ["start_time", "site"]
+  supported_client_location_keys = ["client_provider", "country_code"]
 
   def __init__(self):
     self.logger = logging.getLogger('telescope')
@@ -89,6 +91,7 @@ class SelectorFileParser(object):
   def _parse_file_contents(self, selector_file_contents):
     selector_input_json = json.loads(selector_file_contents)
     self.validate_selector_input(selector_input_json)
+    
 
     metrics = []
     if selector_input_json['metric'] == 'all':
@@ -104,7 +107,14 @@ class SelectorFileParser(object):
         selector.duration = self.parse_duration(selector_input_json['duration'])
         selector.metric = metric
         selector.ip_translation_spec = self.parse_ip_translation(selector_input_json['ip_translation'])
-        selector.client_provider = selector_subset['client_provider']
+        
+        if selector_subset.has_key('client_provider'):
+          selector.client_location = selector_subset['client_provider']
+          selector.client_location_type = 'client_provider'
+        if selector_subset.has_key('country_code'):
+          selector.client_location = selector_subset['country_code']
+          selector.client_location_type = 'country_code'
+        
         selector.site_name = selector_subset['site']
         selector.mlab_project = SelectorFileParser.supported_metrics[metric]
 
@@ -211,8 +221,16 @@ class SelectorFileParser(object):
       raise ValueError('UnsupportedSubsets')
 
     for tuple_set in selector_dict['subsets']:
-      if sorted(tuple_set.keys()) != sorted(self.supported_subset_keys):
-        raise ValueError('UnsupportedSubsetDefinition')
+        selector_keys = set(tuple_set.keys())
+        supported_subset_keys = set(self.supported_data_selector_keys + \
+                                    self.supported_client_location_keys)
+        
+        if len(selector_keys.intersection(self.supported_client_location_keys)) == 0:
+            raise ValueError('NoClientLocationIdentified')
+        if len(selector_keys.intersection(self.supported_client_location_keys)) > 1:
+            raise ValueError('MoreThanOneClientLocationIdentified')
+        if not selector_keys.issubset(supported_subset_keys):
+            raise ValueError('UnsupportedSubsetDefinition')
 
     """ Selectors should contained two control variables and one independendent
         variable

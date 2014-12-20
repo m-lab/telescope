@@ -38,7 +38,7 @@ class SelectorTest(unittest.TestCase):
                      selector_actual.ip_translation_spec.strategy_name)
     self.assertDictEqual(selector_expected.ip_translation_spec.params, selector_actual.ip_translation_spec.params)
     self.assertEqual(selector_expected.site_name, selector_actual.site_name)
-    self.assertEqual(selector_expected.client_provider, selector_actual.client_provider)
+    self.assertEqual(selector_expected.client_location, selector_actual.client_location)
 
   def assertParsedSelectorsMatch(self, selectors_expected, selector_file_contents):
     selectors_actual = self.parse_file_contents(selector_file_contents)
@@ -79,7 +79,7 @@ class SelectorTest(unittest.TestCase):
         iptranslation.IPTranslationStrategySpec('maxmind',
                                                 {'db_snapshots': ['2014-08-04']}))
     selector_expected.site_name = 'lga02'
-    selector_expected.client_provider = 'comcast'
+    selector_expected.client_location = 'comcast'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
   def testValidDoubleSubset(self):
@@ -114,7 +114,7 @@ class SelectorTest(unittest.TestCase):
     selector1_expected.ip_translation_spec = (
         iptranslation.IPTranslationStrategySpec('maxmind',
                                                 {'db_snapshots': ['2014-08-04']}))
-    selector1_expected.client_provider = 'comcast'
+    selector1_expected.client_location = 'comcast'
 
     selector2_expected = selector.Selector()
     selector2_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
@@ -124,7 +124,7 @@ class SelectorTest(unittest.TestCase):
         iptranslation.IPTranslationStrategySpec('maxmind',
                                                 {'db_snapshots': ['2014-08-04']}))
     selector2_expected.site_name = 'lga01'
-    selector2_expected.client_provider = 'comcast'
+    selector2_expected.client_location = 'comcast'
 
     selectors_expected = [selector1_expected, selector2_expected]
 
@@ -157,7 +157,7 @@ class SelectorTest(unittest.TestCase):
         iptranslation.IPTranslationStrategySpec('maxmind',
                                                 {'db_snapshots': ['2014-08-04']}))
     selector_base.site_name = 'lga02'
-    selector_base.client_provider = 'comcast'
+    selector_base.client_location = 'comcast'
 
     selectors_expected = []
     # TODO(mtlynch): Need to fix this test so that changing the order of the

@@ -30,7 +30,7 @@ class BigQueryQueryGenerator:
   database_name = "measurement-lab"
   table_format = "[{database_name}:m_lab.{table_date}]"
 
-  def __init__(self, start_time, end_time, metric, project, server_ips, client_ip_blocks):
+  def __init__(self, start_time, end_time, metric, project, server_ips, client_location_type = None, client_location_values = None):
     self.logger = logging.getLogger('telescope')
     self._select_list = self._build_select_list(metric)
     self._table_list = self._build_table_list(start_time, end_time)
@@ -38,7 +38,12 @@ class BigQueryQueryGenerator:
     is_web100 = project != 'paris_traceroute'
     self._add_data_direction_conditional(metric)
     self._add_log_time_conditional(start_time, end_time, is_web100)
-    self._add_client_network_blocks_conditional(client_ip_blocks, is_web100)
+    
+    if client_location_type == 'client_provider':
+      self._add_client_network_blocks_conditional(client_location_values, is_web100)
+    elif client_location_type == 'country_code':
+      self._add_client_country_code_conditional(client_location_values)
+    
     self._add_server_ips_conditional(server_ips, is_web100)
     self._query = self._create_query_string(project)
 
@@ -154,7 +159,7 @@ class BigQueryQueryGenerator:
     table_list_string = ',\n\t'.join(self._table_list)
 
     conditional_list_string = "\n\tAND ".join(non_null_conditions + tool_specific_conditions)
-
+    
     if self._conditional_dict.has_key('data_direction') is True:
       conditional_list_string += "\n\tAND {data_direction}".format(
           data_direction = self._conditional_dict['data_direction'])
@@ -164,9 +169,13 @@ class BigQueryQueryGenerator:
 
     server_ips_joined = " OR\n\t\t".join(self._conditional_dict['server_ip'])
     conditional_list_string += "\n\tAND ({server_ips})".format(server_ips = server_ips_joined)
-
-    client_ips_joined = " OR\n\t\t".join(self._conditional_dict['client_network_block'])
-    conditional_list_string += "\n\tAND ({client_ips})".format(client_ips = client_ips_joined)
+    
+    if self._conditional_dict.has_key('client_network_block'):
+      client_ips_joined = " OR\n\t\t".join(self._conditional_dict['client_network_block'])
+      conditional_list_string += "\n\tAND ({client_ips})".format(client_ips = client_ips_joined)
+    
+    if self._conditional_dict.has_key('client_country_code'):
+      conditional_list_string += "\n\tAND ({conditional})".format(conditional = self._conditional_dict['client_country_code'])
 
     built_query_string = built_query_format.format(select_list = select_list_string,
                                                    table_list = table_list_string,
@@ -220,6 +229,10 @@ class BigQueryQueryGenerator:
                                                                start_block = start_block,
                                                                end_block = end_block)
       self._conditional_dict['client_network_block'].append(new_statement)
+
+
+  def _add_client_country_code_conditional(self, country_code):
+    self._conditional_dict['client_country_code'] = "{fieldname} = UPPER('{country_code}')".format(fieldname = "connection_spec.client_geolocation.country_code", country_code = country_code)
 
   def _add_server_ips_conditional(self, server_ips, is_web100):
     # remove duplicates, warn if any are found
