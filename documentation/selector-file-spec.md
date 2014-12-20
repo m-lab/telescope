@@ -54,7 +54,9 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 `db_snapshots`: Specifies the snapshot dates (in YYYY-MM-DD format) of the MaxMind databases that are required to resolve IP addresses to providers. This field is optional. If not specified or specified as an empty list, consuming programs should use database snapshots closest in time to the snapshots specified and should suppress warnings to the user about missing snapshots.
 
 `subsets`: An array containing either 1 or 2 items specifying the subsets of data to select.
-* Note: In a valid `subsets` array, only one value should differ between the two items in a pair, while all others should be equal. If more than one value is unequal, the consuming application should reject the data as erroneous. For example, if the first subset specifies lga01 and Verizon, the second subset cannot specify lax01 and Comcast because then the subsets would be varying by more than one parameter.
+* Notes
+** In a valid `subsets` array, only one value should differ between the two items in a pair, while all others should be equal. If more than one value is unequal, the consuming application should reject the data as erroneous. For example, if the first subset specifies lga01 and Verizon, the second subset cannot specify lax01 and Comcast because then the subsets would be varying by more than one parameter.
+** Subsets should only contain one client (currently, `client_provider` or `country_code`) specification.
 
 `site`: Name of M-Lab site where data was collected.
 
@@ -64,5 +66,7 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 * `centurylink`: CenturyLink
 * `level3`: Level 3 Communications
 * `cablevision`: Cablevision Communications
+
+`client_provider`: The ISO 3166-1 alpha-2 country code of the sample set.
 
 `start_time`: Start time of the window in which to collect test results (in ISO 8601 format). This value must end in `Z` (i.e. only UTC time zone is supported).

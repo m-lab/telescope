@@ -201,7 +201,7 @@ class BigQueryCall:
     if self.project_id is not None:
       started_checking = datetime.datetime.utcnow()
 
-      notification_identifier = "{metric}, {site}, {client_provider}, {date}, {duration}".format(**job_metadata)
+      notification_identifier = "{metric}, {site}, {client_location}, {date}, {duration}".format(**job_metadata)
       self.logger.info('Queued request for {notification_identifier}, received job id: {job_id}'.format(
           notification_identifier = notification_identifier, job_id = job_id))
 
