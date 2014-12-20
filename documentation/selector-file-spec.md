@@ -55,6 +55,7 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 
 `subsets`: An array containing either 1 or 2 items specifying the subsets of data to select.
 * Notes
+
 ** In a valid `subsets` array, only one value should differ between the two items in a pair, while all others should be equal. If more than one value is unequal, the consuming application should reject the data as erroneous. For example, if the first subset specifies lga01 and Verizon, the second subset cannot specify lax01 and Comcast because then the subsets would be varying by more than one parameter.
 ** Subsets should only contain one client (currently, `client_provider` or `country_code`) specification.
 
