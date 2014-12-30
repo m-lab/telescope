@@ -85,11 +85,10 @@ class ExternalQueryHandler:
 
         validation_results = telescope.filters.filter_measurements_list(
             self.metadata['metric'], bq_query_returned_data)
-        number_kept = len(validation_results)
-        number_discarded = len(bq_query_returned_data) - len(validation_results)
+        self.metadata['number_kept'] = len(validation_results)
+        self.metadata['number_discarded'] = len(bq_query_returned_data) - len(validation_results)
         logger.info(("Filtered measurements, kept {number_kept} and discarded " +
-                      "{number_discarded}.").format(number_kept = number_kept,
-                                                  number_discarded = number_discarded))
+                      "{number_discarded}.").format(**self.metadata))
 
         subset_metric_calculations = telescope.metrics_math.calculate_results_list(
             self.metadata['metric'], validation_results)
@@ -97,16 +96,18 @@ class ExternalQueryHandler:
         write_metric_calculations_to_file(self.metadata['data_filepath'], subset_metric_calculations)
         self.result = True
       except (ValueError, telescope.external.QueryFailure) as caught_error:
-        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
-            caught_error = caught_error, site = self.metadata['site'],
-            client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
+        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(caught_error = caught_error, **self.metadata))
+        self.metadata['error'] = caught_error
       except telescope.external.TableDoesNotExist:
         logger.error(("Requested tables for ({site}, {client_provider}, " +
                       "{metric}) do not exist, moving on.").format( site = self.metadata['site'],
                           client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
         self.fatal_error = True
-    return self.result
+        self.metadata['error'] = 'TableDoesNotExist'
+      if self.savemetadata == True:
+        write_metadata_to_file(self.metadata['metadata_filepath'], self.metadata)
 
+    return self.result
 
 def setup_logger(verbosity_level = 0):
   """ Create and configure application logging mechanism.
@@ -128,6 +129,18 @@ def setup_logger(verbosity_level = 0):
     logger.setLevel(logging.INFO)
   return logger
 
+def write_metadata_to_file(metadata_filepath, metadata):
+  logger = logging.getLogger('telescope')
+  successfully_wrote = True
+  
+  try:
+    with open(metadata_filepath, 'w') as metadata_file:
+      json.dump(metadata, metadata_file, sort_keys = True, indent = 4, ensure_ascii=False)
+  except Exception as caught_error:
+    logger.error(("Caught {caught_error} writing metadata " +
+                   "for ({site}, {client_provider}, {metric}).").format(caught_error = caught_error, **metadata))
+    successfully_wrote = False
+  return successfully_wrote
 
 def write_metric_calculations_to_file(data_filepath, metric_calculations, should_write_header = False):
   """ Writes metric data to a file in CSV format.
@@ -199,7 +212,7 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
      Returns:
        (str): The generated full pathname of the output file.
   """
-  extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql'}
+  extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql', 'metadata': 'metadata.json'}
   filename_format = "{date}+{duration}_{site}_{client_provider}_{metric}-{extension}"
 
   filename = filename_format.format(date = date,
@@ -343,7 +356,7 @@ def duration_to_string(duration_seconds):
 
   return duration_string
 
-def process_selector_queue(selector_queue, google_auth_config, batchmode = 'automatic', max_tables_without_batch = 2, concurrent_thread_limit = 18):
+def process_selector_queue(selector_queue, google_auth_config, batchmode = 'automatic', max_tables_without_batch = 2, concurrent_thread_limit = 18, savemetadata = False):
   """ Processes the queue of Selector objects by launching BigQuery jobs for
       each Selector and spawning threads to gather the results. Enforces query
       rate limits so that queue processing obeys limits on maximum simultaneous
@@ -413,6 +426,8 @@ def process_selector_queue(selector_queue, google_auth_config, batchmode = 'auto
     external_query_handler = ExternalQueryHandler()
     external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, True)
     external_query_handler.metadata = thread_metadata
+    external_query_handler.savemetadata = savemetadata
+    
     new_thread = threading.Thread(target=bq_query_call.monitor_query_queue,
                                     args = (bq_job_id, thread_metadata, None,
                                             external_query_handler.retrieve_data_upon_job_completion))
@@ -453,6 +468,15 @@ def main(args):
                                                       thread_metadata['site'],
                                                       thread_metadata['client_provider'],
                                                       thread_metadata['metric'])
+                                                      
+    if args.savemetadata == True:
+      thread_metadata['metadata_filepath'] = build_filename('metadata',
+                                                      args.output,
+                                                      thread_metadata['date'],
+                                                      thread_metadata['duration'],
+                                                      thread_metadata['site'],
+                                                      thread_metadata['client_provider'],
+                                                      thread_metadata['metric'])
     if (args.ignorecache is False and
         telescope.utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
       logger.info(('Raw data file found ({data_filepath}), assuming this is cached copy of same data and ' +
@@ -477,14 +501,14 @@ def main(args):
       continue
 
     if args.savequery == True:
-      bigquery_filepath = build_filename('bigquery',
+      thread_metadata['bigquery_filepath'] = build_filename('bigquery',
                                          args.output,
                                          thread_metadata['date'],
                                          thread_metadata['duration'],
                                          thread_metadata['site'],
                                          thread_metadata['client_provider'],
                                          thread_metadata['metric'])
-      write_bigquery_to_file(bigquery_filepath, bq_query_string)
+      write_bigquery_to_file(thread_metadata['bigquery_filepath'], bq_query_string)
     if args.dryrun is False:
       """ Offer Queue a tuple of the BQ statement, BQ table span, metadata,
           and a boolean that indicates that the loop has not attempted to
@@ -513,7 +537,7 @@ def main(args):
 
       while not selector_queue.empty():
 
-        thread_monitor = process_selector_queue(selector_queue, google_auth_config, batchmode = args.batchmode)
+        thread_monitor = process_selector_queue(selector_queue, google_auth_config, batchmode = args.batchmode, savemetadata = args.savemetadata)
 
         for (existing_thread, external_query_handler) in thread_monitor:
           existing_thread.join()
@@ -546,6 +570,9 @@ if __name__ == "__main__":
   parser.add_argument('--maxminddir', default='resources/', help='MaxMind GeoLite ASN snapshot directory.')
   parser.add_argument('--savequery', default=False, action='store_true',
                         help='Save the BigQuery statement to the [output] directory as a .sql')
+  parser.add_argument('--savemetadata', default=False, action='store_true',
+                      help='Save metadata on the Telescope action to the ' +
+                            '[output] directory as a -metadata.json structured data file.')
   parser.add_argument('--dryrun', default=False, action='store_true',
                         help='Run up until the query process (best used with --savequery).')
   parser.add_argument('--ignorecache', default=False, action='store_true',
