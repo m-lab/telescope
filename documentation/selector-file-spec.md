@@ -55,7 +55,7 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 
 `start_time`: Start time of the window in which to collect test results (in ISO 8601 format). This value must end in `Z` (i.e. only UTC time zone is supported).
 
-# Depreciated
+# Deprecated
 
 ## As of version 1.1
 
