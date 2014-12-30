@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import re
+import copy
 
 import iptranslation
 import utils
@@ -64,7 +65,7 @@ class SelectorFileParser(object):
                         'packet_retransmit_rate': 'ndt'
                       }
 
-  supported_file_format_versions = {'minimum': 1, 'maximum': 1}
+  supported_file_format_versions = {'minimum': 1, 'maximum': 1.1}
   supported_subset_keys = ["start_time", "client_provider", "site"]
 
   def __init__(self):
@@ -97,19 +98,28 @@ class SelectorFileParser(object):
       metrics.append(selector_input_json['metric'])
 
     selectors = []
-    for selector_subset in selector_input_json['subsets']:
-      for metric in metrics:
+    
+    for metric in metrics:
         selector = Selector()
-        selector.start_time = self.parse_start_time(selector_subset['start_time'])
-        selector.duration = self.parse_duration(selector_input_json['duration'])
+        
         selector.metric = metric
+        selector.duration = self.parse_duration(selector_input_json['duration'])
         selector.ip_translation_spec = self.parse_ip_translation(selector_input_json['ip_translation'])
-        selector.client_provider = selector_subset['client_provider']
-        selector.site_name = selector_subset['site']
         selector.mlab_project = SelectorFileParser.supported_metrics[metric]
-
-        selectors.append(selector)
-
+      
+        if selector_input_json.has_key('subsets'):
+            for selector_subset in selector_input_json['subsets']:
+                subset_selector_instance = copy.deepcopy(selector)
+                subset_selector_instance.start_time = self.parse_start_time(selector_subset['start_time'])
+                subset_selector_instance.client_provider = selector_subset['client_provider']
+                subset_selector_instance.site_name = selector_subset['site']
+                selectors.append(subset_selector_instance)
+        else:
+            selector.start_time = self.parse_start_time(selector_input_json['start_time'])
+            selector.client_provider = selector_input_json['client_provider']
+            selector.site_name = selector_input_json['site']
+            selectors.append(selector)
+      
     return selectors
 
   def parse_start_time(self, start_time_string):
@@ -203,22 +213,27 @@ class SelectorFileParser(object):
     """ For now we only support subset specifications with 1 or 2 (isp, site,
         client) tuples
     """
-    if len(selector_dict['subsets']) > 2 or len(selector_dict['subsets']) < 1:
-        raise ValueError('UnsupportedSubsetSize')
+    if selector_dict['file_format_version'] < 1.1:
+      if len(selector_dict['subsets']) > 2 or len(selector_dict['subsets']) < 1:
+          raise ValueError('UnsupportedSubsetSize')
 
-    if not selector_dict.has_key('subsets') or \
-            type(selector_dict['subsets']) != list:
-      raise ValueError('UnsupportedSubsets')
+      if not selector_dict.has_key('subsets') or \
+              type(selector_dict['subsets']) != list:
+        raise ValueError('UnsupportedSubsets')
 
-    for tuple_set in selector_dict['subsets']:
-      if sorted(tuple_set.keys()) != sorted(self.supported_subset_keys):
-        raise ValueError('UnsupportedSubsetDefinition')
+      for tuple_set in selector_dict['subsets']:
+        if sorted(tuple_set.keys()) != sorted(self.supported_subset_keys):
+          raise ValueError('UnsupportedSubsetDefinition')
 
-    """ Selectors should contained two control variables and one independendent
-        variable
-    """
-    if len(selector_dict['subsets']) == 2:
-      self.find_independent_variable(selector_dict['subsets'])
+      """ Selectors should contained two control variables and one independendent
+          variable
+      """
+      if len(selector_dict['subsets']) == 2:
+        self.find_independent_variable(selector_dict['subsets'])
+    
+    if selector_dict['file_format_version'] >= 1.1:
+        if selector_dict.has_key('subsets'):
+            raise ValueError('SubsetsNoLongerSupported')
 
     return True
 
