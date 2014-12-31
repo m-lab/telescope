@@ -52,25 +52,25 @@ class SelectorTest(unittest.TestCase):
   def assertParsedSingleSelectorMatches(self, selector_expected, selector_file_contents):
     self.assertParsedSelectorsMatch([selector_expected], selector_file_contents)
 
-  def testValidSingleSubset(self):
+  def testValidSingleSubsetv1(self):
     selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
+           "file_format_version": 1,
+           "duration": "30d",
+           "metric":"average_rtt",
+           "ip_translation":{
+             "strategy":"maxmind",
+             "params":{
+               "db_snapshots":["2014-08-04"]
+             }
+           },
+           "subsets":[
+              {
+                 "site":"lga02",
+                 "client_provider":"comcast",
+                 "start_time":"2014-02-01T00:00:00Z"
+              }
+           ]
+        }"""
     selector_expected = selector.Selector()
     selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
     selector_expected.duration = 30 * 24 * 60 * 60
@@ -82,7 +82,76 @@ class SelectorTest(unittest.TestCase):
     selector_expected.client_provider = 'comcast'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
-  def testValidDoubleSubset(self):
+  def testValidSingleSubsetv1_1(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metric":"average_rtt",
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "site":"lga02",
+            "client_provider":"comcast",
+            "start_time":"2014-02-01T00:00:00Z"
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    selector_expected.site_name = 'lga02'
+    selector_expected.client_provider = 'comcast'
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testNoSubsetv1_0(self):
+    selector_file_contents = """{
+        "file_format_version": 1.0,
+        "duration": "30d",
+        "metric":"average_rtt",
+        "ip_translation":{
+        "strategy":"maxmind",
+        "params":{
+        "db_snapshots":["2014-08-04"]
+        }
+        },
+        "site":"lga02",
+        "client_provider":"comcast",
+        "start_time":"2014-02-01T00:00:00Z"
+        }"""
+    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+
+  def testDeprecatedSubsetFunctionv1_1(self):
+    selector_file_contents = """{
+        "file_format_version": 1.1,
+        "duration": "30d",
+        "metric":"average_rtt",
+        "ip_translation":{
+        "strategy":"maxmind",
+        "params":{
+        "db_snapshots":["2014-08-04"]
+        }
+        },
+        "subsets":[
+                {
+                    "site":"lga02",
+                    "client_provider":"comcast",
+                    "start_time":"2014-02-01T00:00:00Z"
+                },
+                {
+                    "site":"lga01",
+                    "client_provider":"comcast",
+                    "start_time":"2014-02-01T00:00:00Z"
+                }
+            ]
+        }"""
+    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+
+  def testValidDoubleSubsetv1(self):
     selector_file_contents = """{
    "file_format_version": 1,
    "duration": "30d",
