@@ -201,7 +201,7 @@ class SelectorFileParser(object):
     elif selector_dict['file_format_version'] == 1.1:
         parser_rules = SelectorFileParserRules1_1()
     else:
-        raise NotSupportedException('UnsupportedSelectorVersion')
+        raise ValueError('UnsupportedSelectorVersion')
 
     parser_rules.parse(selector_dict)
     return True
