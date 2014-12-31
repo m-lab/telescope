@@ -37,12 +37,13 @@ import telescope.query
 import telescope.selector
 import telescope.utils
 
+TELESCOPE_VERSION = 1.1
 
 class NoClientNetworkBlocksFound(Exception):
   def __init__(self, provider_name):
     Exception.__init__(self,
-                       'Could not find IP blocks associated with client provider {client_provider}.'.format(
-                           client_provider = provider_name))
+                       ('Could not find IP blocks associated with client ' +
+                        'provider {client_provider}.').format(client_provider = provider_name))
 
 class MLabServerResolutionFailed(Exception):
   def __init__(self, inner_exception):
@@ -81,32 +82,32 @@ class ExternalQueryHandler:
     if query_object is not None:
       try:
         bq_query_returned_data = query_object.retrieve_job_data(job_id)
-        logger.debug('Received data, processing according to {metric} metric.'.format(metric = self.metadata['metric']))
+        logger.debug(('Received data, processing according to {metric} ' +
+                      'metric.').format(metric = self.metadata['metric']))
 
         validation_results = telescope.filters.filter_measurements_list(
             self.metadata['metric'], bq_query_returned_data)
-        number_kept = len(validation_results)
-        number_discarded = len(bq_query_returned_data) - len(validation_results)
+        self.metadata['number_kept'] = len(validation_results)
+        self.metadata['number_discarded'] = len(bq_query_returned_data) - len(validation_results)
         logger.info(("Filtered measurements, kept {number_kept} and discarded " +
-                      "{number_discarded}.").format(number_kept = number_kept,
-                                                  number_discarded = number_discarded))
+                      "{number_discarded}.").format(**self.metadata))
 
         subset_metric_calculations = telescope.metrics_math.calculate_results_list(
             self.metadata['metric'], validation_results)
-
         write_metric_calculations_to_file(self.metadata['data_filepath'], subset_metric_calculations)
+        write_metadata_to_file(self.metadata['metadata_filepath'], self.metadata)
         self.result = True
       except (ValueError, telescope.external.QueryFailure) as caught_error:
-        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
-            caught_error = caught_error, site = self.metadata['site'],
-            client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
+        logger.error(("Caught {caught_error} for ({site}, {client_provider}, " +
+                      "{metric}).").format(caught_error = caught_error,
+                                            **self.metadata))
       except telescope.external.TableDoesNotExist:
         logger.error(("Requested tables for ({site}, {client_provider}, " +
                       "{metric}) do not exist, moving on.").format( site = self.metadata['site'],
                           client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
         self.fatal_error = True
-    return self.result
 
+    return self.result
 
 def setup_logger(verbosity_level = 0):
   """ Create and configure application logging mechanism.
@@ -128,6 +129,23 @@ def setup_logger(verbosity_level = 0):
     logger.setLevel(logging.INFO)
   return logger
 
+def write_metadata_to_file(metadata_filepath, metadata):
+  logger = logging.getLogger('telescope')
+  
+  operation_metadata = metadata.copy()
+  operation_metadata['telescope_version'] = TELESCOPE_VERSION
+  
+  internal_variables = ['mlab_project', 'metadata_filename', 'metadata_filepath',
+                        'data_filepath', 'bigquery_filepath']
+  for internal_variable in internal_variables:
+      if operation_metadata.has_key(internal_variable):
+          operation_metadata.pop(internal_variable)
+  try:
+    with open(metadata_filepath, 'w') as metadata_file:
+      json.dump(operation_metadata, metadata_file, sort_keys = True, indent = 4, ensure_ascii=False)
+  except Exception as caught_error:
+    logger.error(("Caught {caught_error} writing metadata " +
+                   "for ({site}, {client_provider}, {metric}).").format(caught_error = caught_error, **operation_metadata))
 
 def write_metric_calculations_to_file(data_filepath, metric_calculations, should_write_header = False):
   """ Writes metric data to a file in CSV format.
@@ -171,17 +189,14 @@ def write_metric_calculations_to_file(data_filepath, metric_calculations, should
   return False
 
 
-def build_filename(resource_type, outpath, date, duration, site, client_provider, metric):
+def build_filename(resource_type, start_date, duration, site, client_provider, metric):
   """ Builds an output filename that reflects the data being written to file.
 
       Args:
         resource_type (str): Indicates what type of data will be stored in the
         file.
 
-        outpath (str): Indicates the path (excluding filename) where the file
-        will be written.
-
-        date (str): A string indicating the start time of the data window the
+        start_date (str): A string indicating the start time of the data window the
         file represents.
 
         duration (str): A string indicating the duration of the data window the
@@ -199,19 +214,17 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
      Returns:
        (str): The generated full pathname of the output file.
   """
-  extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql'}
-  filename_format = "{date}+{duration}_{site}_{client_provider}_{metric}-{extension}"
+  extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql', 'metadata': 'metadata.json'}
+  filename_format = "{start_date}+{duration}_{site}_{client_provider}_{metric}-{extension}"
 
-  filename = filename_format.format(date = date,
+  filename = filename_format.format(start_date = start_date,
                                     duration = duration,
                                     site = site,
                                     client_provider = client_provider,
                                     metric = metric,
                                     extension = extensions[resource_type])
   filename = telescope.utils.strip_special_chars(filename)
-  filepath = os.path.join(outpath, filename)
-  return filepath
-
+  return filename
 
 def write_bigquery_to_file(bigquery_filepath, query_string):
   """ Writes BigQuery query string to a file.
@@ -413,6 +426,7 @@ def process_selector_queue(selector_queue, google_auth_config, batchmode = 'auto
     external_query_handler = ExternalQueryHandler()
     external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, True)
     external_query_handler.metadata = thread_metadata
+    
     new_thread = threading.Thread(target=bq_query_call.monitor_query_queue,
                                     args = (bq_job_id, thread_metadata, None,
                                             external_query_handler.retrieve_data_upon_job_completion))
@@ -439,20 +453,29 @@ def main(args):
   mlab_site_resolver = telescope.mlab.MLabSiteResolver()
   for selector in selectors:
     thread_metadata = {
-                      'date': selector.start_time.strftime('%Y-%m-%d-%H%M%S'),
+                      'start_date': selector.start_time.strftime('%Y-%m-%d-%H%M%S'),
                       'duration': duration_to_string(selector.duration),
                       'site': selector.site_name,
                       'client_provider': selector.client_provider,
                       'metric': selector.metric,
                       'mlab_project': selector.mlab_project,
                     }
-    thread_metadata['data_filepath'] = build_filename('data',
-                                                      args.output,
-                                                      thread_metadata['date'],
+    thread_metadata['data_filename'] = build_filename('data',
+                                                      thread_metadata['start_date'],
                                                       thread_metadata['duration'],
                                                       thread_metadata['site'],
                                                       thread_metadata['client_provider'],
                                                       thread_metadata['metric'])
+    thread_metadata['data_filepath'] = os.path.join(args.output,
+                                                      thread_metadata['data_filename'])
+    thread_metadata['metadata_filename'] = build_filename('metadata',
+                                                      thread_metadata['start_date'],
+                                                      thread_metadata['duration'],
+                                                      thread_metadata['site'],
+                                                      thread_metadata['client_provider'],
+                                                      thread_metadata['metric'])
+    thread_metadata['metadata_filepath'] = os.path.join(args.output,
+                                                        thread_metadata['metadata_filename'])
     if (args.ignorecache is False and
         telescope.utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
       logger.info(('Raw data file found ({data_filepath}), assuming this is cached copy of same data and ' +
@@ -460,7 +483,7 @@ def main(args):
       continue
 
     logger.debug('Did not find existing data file: {data_filepath}'.format(**thread_metadata))
-    logger.debug(('Generating Query for subset of {site}, {client_provider}, {date}, ' +
+    logger.debug(('Generating Query for subset of {site}, {client_provider}, {start_date}, ' +
                   '{duration}.').format(**thread_metadata))
 
     selector.ip_translation_spec.params['maxmind_dir'] = args.maxminddir
@@ -477,14 +500,15 @@ def main(args):
       continue
 
     if args.savequery == True:
-      bigquery_filepath = build_filename('bigquery',
-                                         args.output,
-                                         thread_metadata['date'],
-                                         thread_metadata['duration'],
-                                         thread_metadata['site'],
-                                         thread_metadata['client_provider'],
-                                         thread_metadata['metric'])
-      write_bigquery_to_file(bigquery_filepath, bq_query_string)
+      thread_metadata['bigquery_filename'] = build_filename('bigquery',
+                                                             thread_metadata['start_date'],
+                                                             thread_metadata['duration'],
+                                                             thread_metadata['site'],
+                                                             thread_metadata['client_provider'],
+                                                             thread_metadata['metric'])
+      thread_metadata['bigquery_filepath'] = os.path.join(args.output,
+                                                          thread_metadata['bigquery_filename'])
+      write_bigquery_to_file(thread_metadata['bigquery_filepath'], bq_query_string)
     if args.dryrun is False:
       """ Offer Queue a tuple of the BQ statement, BQ table span, metadata,
           and a boolean that indicates that the loop has not attempted to
@@ -520,10 +544,10 @@ def main(args):
           if external_query_handler.result != True and external_query_handler.fatal_error != True:
             selector_queue.put( external_query_handler.queue_set )
           elif external_query_handler.result != True and external_query_handler.fatal_error == True:
-            logger.debug(('Fatal error on {site}, {client_provider}, {date}, ' +
+            logger.debug(('Fatal error on {site}, {client_provider}, {start_date}, ' +
                 '{duration}, moving along.').format(**thread_metadata))
           else:
-            logger.debug(('Successfully retrieved {site}, {client_provider}, {date}, ' +
+            logger.debug(('Successfully retrieved {site}, {client_provider}, {start_date}, ' +
                           '{duration}.').format(**thread_metadata))
 
   except KeyboardInterrupt:
