@@ -21,7 +21,6 @@ import json
 import logging
 import os
 import re
-import copy
 
 import iptranslation
 import utils
@@ -108,7 +107,6 @@ class SelectorFileParser(object):
         selector.client_provider = selector_input_json['client_provider']
         selector.site_name = selector_input_json['site']
         selectors.append(selector)
-    
     return selectors
 
   def parse_start_time(self, start_time_string):
@@ -190,17 +188,17 @@ class SelectorFileParser(object):
     elif selector_dict['file_format_version'] == 1.0:
         raise ValueError('UnsupportedVersion')
     elif selector_dict['file_format_version'] == 1.1:
-        parser_rules = SelectorFileParserRules1_1()
+        parser_validator = SelectorFileValidator1_1()
     else:
         raise ValueError('UnsupportedSelectorVersion')
 
-    parser_rules.parse(selector_dict)
+    parser_validator.validate(selector_dict)
     return True
 
-class SelectorFileParserRules(object):
-    def parse(self, selector_dict):
+class SelectorFileValidator(object):
+    def validate(self, selector_dict):
         raise NotImplementedError('Subclasses must implement this function.')
-    def corerules(self, selector_dict):
+    def validate_common(self, selector_dict):
         if not selector_dict.has_key('duration'):
             raise ValueError('UnsupportedDuration')
         if not selector_dict.has_key('metric') or \
@@ -211,9 +209,9 @@ class SelectorFileParserRules(object):
                     raise ValueError('UnsupportedMetric')
         return True
 
-class SelectorFileParserRules1_1(SelectorFileParserRules):
-    def parse(self, selector_dict):
-        self.corerules(selector_dict)
+class SelectorFileValidator1_1(SelectorFileValidator):
+    def validate(self, selector_dict):
+        self.validate_common(selector_dict)
         if selector_dict.has_key('subsets'):
             raise ValueError('SubsetsNoLongerSupported')
         return True

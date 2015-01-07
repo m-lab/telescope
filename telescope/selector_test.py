@@ -52,7 +52,7 @@ class SelectorTest(unittest.TestCase):
   def assertParsedSingleSelectorMatches(self, selector_expected, selector_file_contents):
     self.assertParsedSelectorsMatch([selector_expected], selector_file_contents)
 
-  def testNoDeprecatedFormats_v1_0(self):
+  def testDeprecatedFileFormats(self):
     selector_file_contents = """{
            "file_format_version": 1,
            "duration": "30d",
@@ -72,8 +72,34 @@ class SelectorTest(unittest.TestCase):
            ]
         }"""
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
-
-  def testValidSingleSubsetv1_1(self):
+  
+  def testDeprecatedSubsetFunction(self):
+    selector_file_contents = """{
+              "file_format_version": 1.1,
+              "duration": "30d",
+              "metric":"average_rtt",
+              "ip_translation":{
+                  "strategy":"maxmind",
+                  "params":{
+                      "db_snapshots":["2014-08-04"]
+                  }
+          },
+          "subsets":[
+              {
+                  "site":"lga02",
+                  "client_provider":"comcast",
+                  "start_time":"2014-02-01T00:00:00Z"
+              },
+              {
+                  "site":"lga01",
+                  "client_provider":"comcast",
+                  "start_time":"2014-02-01T00:00:00Z"
+              }
+              ]
+          }"""
+    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+  
+  def testValidInputv1_1(self):
     selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",
@@ -98,32 +124,6 @@ class SelectorTest(unittest.TestCase):
     selector_expected.site_name = 'lga02'
     selector_expected.client_provider = 'comcast'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
-
-  def testDeprecatedSubsetFunctionv1_1(self):
-    selector_file_contents = """{
-        "file_format_version": 1.1,
-        "duration": "30d",
-        "metric":"average_rtt",
-        "ip_translation":{
-        "strategy":"maxmind",
-        "params":{
-        "db_snapshots":["2014-08-04"]
-        }
-        },
-        "subsets":[
-                {
-                    "site":"lga02",
-                    "client_provider":"comcast",
-                    "start_time":"2014-02-01T00:00:00Z"
-                },
-                {
-                    "site":"lga01",
-                    "client_provider":"comcast",
-                    "start_time":"2014-02-01T00:00:00Z"
-                }
-            ]
-        }"""
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
 
   def testValidAllMetricv1_1(self):
     selector_file_contents = """{
