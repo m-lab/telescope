@@ -52,7 +52,7 @@ class SelectorTest(unittest.TestCase):
   def assertParsedSingleSelectorMatches(self, selector_expected, selector_file_contents):
     self.assertParsedSelectorsMatch([selector_expected], selector_file_contents)
 
-  def testValidSingleSubsetv1(self):
+  def testNoDeprecatedFormats_v1_0(self):
     selector_file_contents = """{
            "file_format_version": 1,
            "duration": "30d",
@@ -71,16 +71,7 @@ class SelectorTest(unittest.TestCase):
               }
            ]
         }"""
-    selector_expected = selector.Selector()
-    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
-    selector_expected.duration = 30 * 24 * 60 * 60
-    selector_expected.metric = 'average_rtt'
-    selector_expected.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector_expected.site_name = 'lga02'
-    selector_expected.client_provider = 'comcast'
-    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
 
   def testValidSingleSubsetv1_1(self):
     selector_file_contents = """{
@@ -108,23 +99,6 @@ class SelectorTest(unittest.TestCase):
     selector_expected.client_provider = 'comcast'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
-  def testNoSubsetv1_0(self):
-    selector_file_contents = """{
-        "file_format_version": 1.0,
-        "duration": "30d",
-        "metric":"average_rtt",
-        "ip_translation":{
-        "strategy":"maxmind",
-        "params":{
-        "db_snapshots":["2014-08-04"]
-        }
-        },
-        "site":"lga02",
-        "client_provider":"comcast",
-        "start_time":"2014-02-01T00:00:00Z"
-        }"""
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
-
   def testDeprecatedSubsetFunctionv1_1(self):
     selector_file_contents = """{
         "file_format_version": 1.1,
@@ -151,57 +125,9 @@ class SelectorTest(unittest.TestCase):
         }"""
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
 
-  def testValidDoubleSubsetv1(self):
+  def testValidAllMetricv1_1(self):
     selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga01",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
-    selector1_expected = selector.Selector()
-    selector1_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
-    selector1_expected.duration = 30 * 24 * 60 * 60
-    selector1_expected.metric = 'average_rtt'
-    selector1_expected.site_name = 'lga02'
-    selector1_expected.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector1_expected.client_provider = 'comcast'
-
-    selector2_expected = selector.Selector()
-    selector2_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
-    selector2_expected.duration = 30 * 24 * 60 * 60
-    selector2_expected.metric = 'average_rtt'
-    selector2_expected.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector2_expected.site_name = 'lga01'
-    selector2_expected.client_provider = 'comcast'
-
-    selectors_expected = [selector1_expected, selector2_expected]
-
-    self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
-
-  def testValidSingleSubsetAllMetric(self):
-    selector_file_contents = """{
-   "file_format_version": 1,
+   "file_format_version": 1.1,
    "duration": "30d",
    "metric":"all",
    "ip_translation":{
@@ -210,13 +136,9 @@ class SelectorTest(unittest.TestCase):
        "db_snapshots":["2014-08-04"]
      }
    },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
+    "site":"lga02",
+    "client_provider":"comcast",
+    "start_time":"2014-02-01T00:00:00Z"
 }"""
     selector_base = selector.Selector()
     selector_base.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
@@ -247,60 +169,6 @@ class SelectorTest(unittest.TestCase):
     # The 'all' metric should expand to selectors for every supported metric.
     self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
 
-  def testDoubleSubsetNoIndependentVariable(self):
-    selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
-    # The subsets are identical (no independent variable), so this should fail.
-    self.assertRaises(Exception, self.parse_file_contents, selector_file_contents)
-
-  def testDoubleSubsetTooManyIndependentVariables(self):
-    selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga01",
-         "client_provider":"cablevision",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
-    # The subsets contain two independent variables, so this should fail
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
-
   def testInvalidJson(self):
     selector_file_contents = """{
    "file_format_version": 1,
@@ -312,18 +180,9 @@ class SelectorTest(unittest.TestCase):
        "db_snapshots":["2014-08-04"]
      }
    },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga01",
-         "client_provider":"cablevision",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
+    "site":"lga02",
+    "client_provider":"comcast",
+    "start_time":"2014-02-01T00:00:00Z"
 """
     # The final closing curly brace is missing, so this should fail
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)

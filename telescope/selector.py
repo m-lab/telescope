@@ -104,20 +104,11 @@ class SelectorFileParser(object):
         selector.duration = self.parse_duration(selector_input_json['duration'])
         selector.ip_translation_spec = self.parse_ip_translation(selector_input_json['ip_translation'])
         selector.mlab_project = SelectorFileParser.supported_metrics[metric]
-      
-        if selector_input_json.has_key('subsets'):
-            for selector_subset in selector_input_json['subsets']:
-                subset_selector_instance = copy.deepcopy(selector)
-                subset_selector_instance.start_time = self.parse_start_time(selector_subset['start_time'])
-                subset_selector_instance.client_provider = selector_subset['client_provider']
-                subset_selector_instance.site_name = selector_subset['site']
-                selectors.append(subset_selector_instance)
-        else:
-            selector.start_time = self.parse_start_time(selector_input_json['start_time'])
-            selector.client_provider = selector_input_json['client_provider']
-            selector.site_name = selector_input_json['site']
-            selectors.append(selector)
-      
+        selector.start_time = self.parse_start_time(selector_input_json['start_time'])
+        selector.client_provider = selector_input_json['client_provider']
+        selector.site_name = selector_input_json['site']
+        selectors.append(selector)
+    
     return selectors
 
   def parse_start_time(self, start_time_string):
@@ -197,7 +188,7 @@ class SelectorFileParser(object):
     if not selector_dict.has_key('file_format_version'):
         raise ValueError('NoSelectorVersionSpecified')
     elif selector_dict['file_format_version'] == 1.0:
-        parser_rules = SelectorFileParserRules1_0()
+        raise ValueError('UnsupportedVersion')
     elif selector_dict['file_format_version'] == 1.1:
         parser_rules = SelectorFileParserRules1_1()
     else:
@@ -210,10 +201,6 @@ class SelectorFileParserRules(object):
     def parse(self, selector_dict):
         raise NotImplementedError('Subclasses must implement this function.')
     def corerules(self, selector_dict):
-        raise NotImplementedError('Subclasses must implement this function.')
-
-class SelectorFileParserRules1_0(SelectorFileParserRules):
-    def parse(self, selector_dict):
         if not selector_dict.has_key('duration'):
             raise ValueError('UnsupportedDuration')
         if not selector_dict.has_key('metric') or \
@@ -221,59 +208,12 @@ class SelectorFileParserRules1_0(SelectorFileParserRules):
              type(selector_dict['metric']) != unicode) or \
                 (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
                  selector_dict['metric'] != 'all'):
-             raise ValueError('UnsupportedMetric')
-        if not selector_dict.has_key('subsets') or \
-            type(selector_dict['subsets']) != list:
-                raise ValueError('UnsupportedSubsets')
-        if len(selector_dict['subsets']) > 2 or len(selector_dict['subsets']) < 1:
-            raise ValueError('UnsupportedSubsetSize')
-        for tuple_set in selector_dict['subsets']:
-            if sorted(tuple_set.keys()) != sorted(SelectorFileParser.supported_subset_keys):
-                raise ValueError('UnsupportedSubsetDefinition')
-                
-        """ Selectors should contain two control variables and one independendent
-            variable
-            """
-        if len(selector_dict['subsets']) == 2:
-            self.find_independent_variable(selector_dict['subsets'])
+                    raise ValueError('UnsupportedMetric')
         return True
-
-    def find_independent_variable(self, subsets):
-        """ Parse two (isp, site, timestamp) tuples and return the key of the
-            independent variable.
-            
-            Args:
-            subsets (list): List of length 2 with (isp, site, timestamp) dicts.
-            
-            Returns:
-            str: name of the key that is different between the two tuples.
-            
-            """
-        
-        independent_variable = None
-        
-        for key in subsets[0].keys():
-            if subsets[0][key] != subsets[1][key] and \
-                    independent_variable is None:
-                independent_variable = key
-            elif subsets[0][key] != subsets[1][key] and \
-                    independent_variable is not None:
-                raise ValueError('IncomparableSets')
-        if independent_variable == None:
-            raise Exception('NoIndependentVariable')
-        
-        return independent_variable
 
 class SelectorFileParserRules1_1(SelectorFileParserRules):
     def parse(self, selector_dict):
-        if not selector_dict.has_key('duration'):
-            raise ValueError('UnsupportedDuration')
-        if not selector_dict.has_key('metric') or \
-            (type(selector_dict['metric']) != str and \
-             type(selector_dict['metric']) != unicode) or \
-                (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
-                 selector_dict['metric'] != 'all'):
-             raise ValueError('UnsupportedMetric')
+        self.corerules(selector_dict)
         if selector_dict.has_key('subsets'):
             raise ValueError('SubsetsNoLongerSupported')
         return True
