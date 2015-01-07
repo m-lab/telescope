@@ -63,7 +63,6 @@ class SelectorFileParser(object):
                         'packet_retransmit_rate': 'ndt'
                       }
   supported_subset_keys = ["start_time", "client_provider", "site"]
-  supported_file_format_versions = {'minimum': 1.1, 'maximum': 1.1}
   
   def __init__(self):
     self.logger = logging.getLogger('telescope')
@@ -193,7 +192,6 @@ class SelectorFileParser(object):
         raise ValueError('UnsupportedSelectorVersion')
 
     parser_validator.validate(selector_dict)
-    return True
 
 class SelectorFileValidator(object):
     def validate(self, selector_dict):
@@ -207,11 +205,9 @@ class SelectorFileValidator(object):
                 (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
                  selector_dict['metric'] != 'all'):
                     raise ValueError('UnsupportedMetric')
-        return True
 
 class SelectorFileValidator1_1(SelectorFileValidator):
     def validate(self, selector_dict):
         self.validate_common(selector_dict)
         if selector_dict.has_key('subsets'):
             raise ValueError('SubsetsNoLongerSupported')
-        return True
