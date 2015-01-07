@@ -210,19 +210,18 @@ class SelectorFileParserRules(object):
     def parse(self, selector_dict):
         raise NotImplementedError('Subclasses must implement this function.')
     def corerules(self, selector_dict):
-        if not selector_dict.has_key('duration'):
-            raise ValueError('UnsupportedDuration')
-        if not selector_dict.has_key('metric') or \
-                (type(selector_dict['metric']) != str and \
-                 type(selector_dict['metric']) != unicode) or \
-                (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
-                selector_dict['metric'] != 'all'):
-            raise ValueError('UnsupportedMetric')
-        return True
+        raise NotImplementedError('Subclasses must implement this function.')
 
 class SelectorFileParserRules1_0(SelectorFileParserRules):
     def parse(self, selector_dict):
-        self.corerules(selector_dict)
+        if not selector_dict.has_key('duration'):
+            raise ValueError('UnsupportedDuration')
+        if not selector_dict.has_key('metric') or \
+            (type(selector_dict['metric']) != str and \
+             type(selector_dict['metric']) != unicode) or \
+                (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
+                 selector_dict['metric'] != 'all'):
+             raise ValueError('UnsupportedMetric')
         if not selector_dict.has_key('subsets') or \
             type(selector_dict['subsets']) != list:
                 raise ValueError('UnsupportedSubsets')
@@ -267,7 +266,14 @@ class SelectorFileParserRules1_0(SelectorFileParserRules):
 
 class SelectorFileParserRules1_1(SelectorFileParserRules):
     def parse(self, selector_dict):
-        self.corerules(selector_dict)
+        if not selector_dict.has_key('duration'):
+            raise ValueError('UnsupportedDuration')
+        if not selector_dict.has_key('metric') or \
+            (type(selector_dict['metric']) != str and \
+             type(selector_dict['metric']) != unicode) or \
+                (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
+                 selector_dict['metric'] != 'all'):
+             raise ValueError('UnsupportedMetric')
         if selector_dict.has_key('subsets'):
             raise ValueError('SubsetsNoLongerSupported')
         return True
