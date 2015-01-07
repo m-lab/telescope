@@ -63,7 +63,7 @@ class SelectorFileParser(object):
                         'packet_retransmit_rate': 'ndt'
                       }
   supported_subset_keys = ["start_time", "client_provider", "site"]
-  supported_file_format_versions = {'minimum': 1, 'maximum': 1.1}
+  supported_file_format_versions = {'minimum': 1.1, 'maximum': 1.1}
   
   def __init__(self):
     self.logger = logging.getLogger('telescope')
@@ -186,7 +186,7 @@ class SelectorFileParser(object):
     if not selector_dict.has_key('file_format_version'):
         raise ValueError('NoSelectorVersionSpecified')
     elif selector_dict['file_format_version'] == 1.0:
-        raise ValueError('UnsupportedVersion')
+        raise ValueError('DeprecatedSelectorVersion')
     elif selector_dict['file_format_version'] == 1.1:
         parser_validator = SelectorFileValidator1_1()
     else:
