@@ -38,6 +38,9 @@ import telescope.selector
 import telescope.utils
 
 
+MAX_THREADS_NORMAL_MODE = 18
+MAX_THREADS_BATCH_MODE = 100
+
 class NoClientNetworkBlocksFound(Exception):
   def __init__(self, provider_name):
     Exception.__init__(self,
@@ -292,11 +295,11 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
 
   server_ips = []
   try:
-    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site_name,
+    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site,
                                                              mlab_project = selector.mlab_project):
       server_ips.append(retrieved_site_ip)
       logger.debug("Found IP for {site} of {site_ip} on test {test}.".format(
-          site=selector.site_name, site_ip = retrieved_site_ip, test = selector.mlab_project))
+          site=selector.site, site_ip = retrieved_site_ip, test = selector.mlab_project))
   except Exception as caught_error:
     raise MLabServerResolutionFailed(caught_error)
 
@@ -343,7 +346,30 @@ def duration_to_string(duration_seconds):
 
   return duration_string
 
-def process_selector_queue(selector_queue, google_auth_config, batchmode = 'automatic', max_tables_without_batch = 2, concurrent_thread_limit = 18):
+def wait_to_respect_thread_limit(concurrent_thread_limit, queue_size):
+  """ Waits until the number of active threads (including both background
+      worker threads and the main thread) have dropped below the maximum number
+      of permitted concurrent threads.
+
+      Args:
+        concurrent_thread_limit (int): Maximum number of permitted concurrent
+        threads.
+
+        queue_size (int): Total number of jobs waiting in work queue.
+  """
+  logger = logging.getLogger('telescope')
+  active_thread_count = threading.activeCount()
+  while active_thread_count >= concurrent_thread_limit:
+    logger.debug(('Reached thread limit ({thread_limit}), cooling off. '
+                  'Currently {thread_count} active threads and {queue_size} in'
+                  ' queue.').format(thread_limit = concurrent_thread_limit,
+                                   thread_count = active_thread_count,
+                                   queue_size = queue_size))
+    time.sleep(20)
+    active_thread_count = threading.activeCount()
+
+def process_selector_queue(selector_queue, google_auth_config,
+                           batchmode='automatic', max_tables_without_batch=2):
   """ Processes the queue of Selector objects by launching BigQuery jobs for
       each Selector and spawning threads to gather the results. Enforces query
       rate limits so that queue processing obeys limits on maximum simultaneous
@@ -361,9 +387,6 @@ def process_selector_queue(selector_queue, google_auth_config, batchmode = 'auto
         indicates the maximum number of database tables that can appear in the
         SELECT portion of a query before the job is automatically converted to
         batch mode.
-
-        concurrent_thread_limit: Indicates the maximum number of threads to run
-        when batchmode is not set to 'all'.
 
       Returns:
         (list): A list of 2-tuples where the first element is the spawned
@@ -420,13 +443,12 @@ def process_selector_queue(selector_queue, google_auth_config, batchmode = 'auto
     new_thread.start()
     thread_monitor.append( (new_thread, external_query_handler) )
 
-    if batchmode != 'all':
-      while threading.activeCount() >= concurrent_thread_limit:
-        logger.debug(("Reached thread limit ({thread_limit}), cooling off. Currently " +
-                      "{thread_count} active threads and {queue_size} in queue.").format(thread_limit = concurrent_thread_limit,
-                                                      thread_count = threading.activeCount(),
-                                                      queue_size = selector_queue.qsize()))
-        time.sleep(20)
+    if is_batched_query:
+      concurrent_thread_limit = MAX_THREADS_BATCH_MODE
+    else:
+      concurrent_thread_limit = MAX_THREADS_NORMAL_MODE
+    wait_to_respect_thread_limit(concurrent_thread_limit, selector_queue.qsize())
+
   return thread_monitor
 
 def main(args):
@@ -441,7 +463,7 @@ def main(args):
     thread_metadata = {
                       'date': selector.start_time.strftime('%Y-%m-%d-%H%M%S'),
                       'duration': duration_to_string(selector.duration),
-                      'site': selector.site_name,
+                      'site': selector.site,
                       'client_provider': selector.client_provider,
                       'metric': selector.metric,
                       'mlab_project': selector.mlab_project,
