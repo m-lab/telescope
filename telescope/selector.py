@@ -37,7 +37,7 @@ class Selector(object):
     self.metric = None
     self.ip_translation_spec = None
     self.client_provider = None
-    self.site_name = None
+    self.site = None
     self.mlab_project = None
 
   def __repr__(self):
