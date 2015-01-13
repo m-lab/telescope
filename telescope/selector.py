@@ -75,7 +75,7 @@ class SelectorFileParser(object):
     """ Parses a selector file into one or more Selector objects. Each selector object
         corresponds to one dataset. If the selector file specifies multiple subsets, the
         parser will generate a separate selector object for each subset. If the selector
-        file specifies metric:'all', the parser will generate a separate selector object
+        file specifies multiple metric, the parser will generate a separate selector object
         for each supported metric.
 
         Args:
@@ -90,9 +90,6 @@ class SelectorFileParser(object):
   def _parse_file_contents(self, selector_file_contents):
     selector_input_json = json.loads(selector_file_contents)
     self.validate_selector_input(selector_input_json)
-
-    if selector_input_json['metric'] == 'all':
-      selector_input_json['metric'] = self.supported_metrics.keys()
 
     selector_dicts = self._parse_input_for_selectors(selector_input_json)
     selectors = self._create_selectors_from_dict(selector_dicts)
@@ -251,8 +248,7 @@ class SelectorFileValidator(object):
         if not selector_dict.has_key('metric') or \
             (type(selector_dict['metric']) != str and \
              type(selector_dict['metric']) != unicode) or \
-                (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
-                 selector_dict['metric'] != 'all'):
+                (selector_dict['metric'] not in SelectorFileParser.supported_metrics):
                     raise ValueError('UnsupportedMetric')
 
 class SelectorFileValidator1_1(SelectorFileValidator):

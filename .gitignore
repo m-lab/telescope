@@ -6,3 +6,5 @@ bigquery_credentials.dat
 processed/*
 
 selectors
+
+telescope.xcworkspace

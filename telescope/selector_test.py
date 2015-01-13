@@ -125,50 +125,6 @@ class SelectorTest(unittest.TestCase):
     selector_expected.client_provider = 'comcast'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
-  def testValidAllMetricv1_1(self):
-    selector_file_contents = """{
-   "file_format_version": 1.1,
-   "duration": "30d",
-   "metric":"all",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-    "site":"lga02",
-    "client_provider":"comcast",
-    "start_time":"2014-02-01T00:00:00Z"
-}"""
-    selector_base = selector.Selector()
-    selector_base.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
-    selector_base.duration = 30 * 24 * 60 * 60
-    selector_base.metric = 'average_rtt'
-    selector_base.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector_base.site_name = 'lga02'
-    selector_base.client_provider = 'comcast'
-
-    selectors_expected = []
-    # TODO(mtlynch): Need to fix this test so that changing the order of the
-    # expected_metrics list doesn't cause the test to fail.
-    expected_metrics = (
-        'minimum_rtt',
-        'upload_throughput',
-        'packet_retransmit_rate',
-        'download_throughput',
-        'average_rtt'
-        )
-
-    for metric in expected_metrics:
-      selector_copy = copy.copy(selector_base)
-      selector_copy.metric = metric
-      selectors_expected.append(selector_copy)
-
-    # The 'all' metric should expand to selectors for every supported metric.
-    self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
-
   def testInvalidJson(self):
     selector_file_contents = """{
    "file_format_version": 1,
