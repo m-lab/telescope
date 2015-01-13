@@ -228,7 +228,7 @@ class SelectorFileValidator(object):
                 raise ValueError('MetricsRequiresList')
         else:
             if 'all' in selector_dict['metrics']:
-                raise ValueError('DeprecatedMetric')
+                raise ValueError('AllMetricNoLongerSupported')
             for metric in selector_dict['metrics']:
                 if metric not in SelectorFileParser.supported_metrics:
                     raise ValueError('UnsupportedMetric')
