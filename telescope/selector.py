@@ -71,11 +71,13 @@ class SelectorFileParser(object):
     self.logger = logging.getLogger('telescope')
 
   def parse(self, selector_filepath):
-    """ Parses a selector file into one or more Selector objects. Each selector object
-        corresponds to one dataset. If the selector file specifies multiple subsets, the
-        parser will generate a separate selector object for each subset. If the selector
-        file specifies multiple metric, the parser will generate a separate selector object
-        for each supported metric.
+    """ Parses a JSON selector file into a list of one or more Selector objects. 
+        Each Selector object corresponds to one discrete dataset to retrieve 
+        from BigQuery. For fields in the selector file that contain lists of 
+        values (e.g. metrics, sites), the parser will create a separate 
+        Selector object for each combination of those values (e.g. if the file 
+        specifies metrics [A, B] and sites: [X, Y, Z] the parser will create 
+        Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z).
 
         Args:
           selector_filepath (str): Path to selector file to parse.
@@ -99,8 +101,8 @@ class SelectorFileParser(object):
       flattened for each combination.
       
       Args:
-        selector_json (dict): Dictionary parsed from a valid
-          selector JSON file with potentially lists for values.
+        selector_json (dict): Unprocessed SelectorJSON file represented as a 
+          dict.
       
       Returns:
         list: List of dictaries representing the possible combinations of
@@ -115,7 +117,8 @@ class SelectorFileParser(object):
     sites = selector_json['sites']
     metrics = selector_json['metrics']
     
-    for start_time, client_provider, site, metric in itertools.product(start_times, client_providers, sites, metrics):
+    for start_time, client_provider, site, metric in \
+            itertools.product(start_times, client_providers, sites, metrics):
 
         selector = Selector()
         selector.ip_translation_spec = self.parse_ip_translation(selector_json['ip_translation'])
@@ -227,8 +230,6 @@ class SelectorFileValidator(object):
             type(selector_dict['metrics']) != list:
                 raise ValueError('MetricsRequiresList')
         else:
-            if 'all' in selector_dict['metrics']:
-                raise ValueError('AllMetricNoLongerSupported')
             for metric in selector_dict['metrics']:
                 if metric not in SelectorFileParser.supported_metrics:
                     raise ValueError('UnsupportedMetric')

@@ -146,7 +146,6 @@ class SelectorTest(unittest.TestCase):
     selector_base = selector.Selector()
     selector_base.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
     selector_base.duration = 30 * 24 * 60 * 60
-    selector_base.metric = 'average_rtt'
     selector_base.ip_translation_spec = (
          iptranslation.IPTranslationStrategySpec('maxmind',
                                                  {'db_snapshots': ['2014-08-04']}))
@@ -161,7 +160,6 @@ class SelectorTest(unittest.TestCase):
       selector_copy.site = site
       selectors_expected.append(selector_copy)
 
-    # The 'all' metric should expand to selectors for every supported metric.
     self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
 
   def testInvalidJson(self):
