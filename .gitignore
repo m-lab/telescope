@@ -7,4 +7,6 @@ processed/*
 
 selectors
 
-telescope.xcworkspace
+*.xcworkspace
+
+*.DS_Store
