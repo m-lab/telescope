@@ -110,10 +110,10 @@ class SelectorFileParser(object):
     selectors = []
     has_not_recursed = True
 
-    start_times = selector_json['start_time']
-    client_providers = selector_json['client_provider']
-    sites = selector_json['site']
-    metrics = selector_json['metric']
+    start_times = selector_json['start_times']
+    client_providers = selector_json['client_providers']
+    sites = selector_json['sites']
+    metrics = selector_json['metrics']
     
     for start_time, client_provider, site, metric in itertools.product(start_times, client_providers, sites, metrics):
 
@@ -223,9 +223,15 @@ class SelectorFileValidator(object):
         if not selector_dict.has_key('duration'):
             raise ValueError('UnsupportedDuration')
 
-        if not selector_dict.has_key('metric') or \
-            type(selector_dict['metric']) != list:
+        if not selector_dict.has_key('metrics') or \
+            type(selector_dict['metrics']) != list:
                 raise ValueError('MetricsRequiresList')
+        else:
+            if 'all' in selector_dict['metrics']:
+                raise ValueError('DeprecatedMetric')
+            for metric in selector_dict['metrics']:
+                if metric not in SelectorFileParser.supported_metrics:
+                    raise ValueError('UnsupportedMetric')
 
 class SelectorFileValidator1_1(SelectorFileValidator):
     def validate(self, selector_dict):
