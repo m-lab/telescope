@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import re
+import itertools
 
 import iptranslation
 import utils
@@ -65,8 +66,6 @@ class SelectorFileParser(object):
                         'average_rtt': 'ndt',
                         'packet_retransmit_rate': 'ndt'
                       }
-  supported_subset_keys = ["start_time", "client_provider", "site"]
-  iterable_field_keys = ['start_time', 'client_provider', 'site', 'metric']
 
   def __init__(self):
     self.logger = logging.getLogger('telescope')
@@ -91,17 +90,16 @@ class SelectorFileParser(object):
     selector_input_json = json.loads(selector_file_contents)
     self.validate_selector_input(selector_input_json)
 
-    selector_dicts = self._parse_input_for_selectors(selector_input_json)
-    selectors = self._create_selectors_from_dict(selector_dicts)
+    selectors = self._parse_input_for_selectors(selector_input_json)
     
     return selectors
 
-  def _parse_input_for_selectors(self, selector_dict):
-    """ Parse the selector JSON diction and return a list of dictionaries
+  def _parse_input_for_selectors(self, selector_json):
+    """ Parse the selector JSON dictionary and return a list of dictionaries
       flattened for each combination.
       
       Args:
-        selector_dict (dict): Dictionary parsed from a valid
+        selector_json (dict): Dictionary parsed from a valid
           selector JSON file with potentially lists for values.
       
       Returns:
@@ -111,43 +109,22 @@ class SelectorFileParser(object):
     """
     selectors = []
     has_not_recursed = True
-    
-    for iterable_field_key in self.iterable_field_keys:
-        if has_not_recursed and type(selector_dict[iterable_field_key]) == list:
-            for iterable_field_value in selector_dict[iterable_field_key]:
-                selector_dict_temp = selector_dict.copy()
-                selector_dict_temp[iterable_field_key] = iterable_field_value
-                selectors.extend(self._parse_input_for_selectors(selector_dict_temp))
-            has_not_recursed = False
 
-    if has_not_recursed == True:
-        selectors.append(selector_dict)
+    start_times = selector_json['start_time']
+    client_providers = selector_json['client_provider']
+    sites = selector_json['site']
+    metrics = selector_json['metric']
     
-    return selectors
+    for start_time, client_provider, site, metric in itertools.product(start_times, client_providers, sites, metrics):
 
-  def _create_selectors_from_dict(self, selector_dicts):
-    """ Parse the selector dictionaries and return Selectors to match.
-    
-        Args:
-          selector_dicts (list): List of dictionaries of parsed from a valid
-            selector JSON file with no lists for values.
-          
-        Returns:
-          list: List of Selector objects.
-
-    """
-    selectors = []
-    
-    for selector_dict in selector_dicts:
         selector = Selector()
-        
-        selector.ip_translation_spec = self.parse_ip_translation(selector_dict['ip_translation'])
-        selector.duration = self.parse_duration(selector_dict['duration'])
-        selector.start_time = self.parse_start_time(selector_dict['start_time'])
+        selector.ip_translation_spec = self.parse_ip_translation(selector_json['ip_translation'])
+        selector.duration = self.parse_duration(selector_json['duration'])
 
-        for iterable_field_key in ['client_provider', 'site', 'metric']:
-            if selector_dict.has_key(iterable_field_key):
-                setattr(selector, iterable_field_key, selector_dict[iterable_field_key])
+        selector.start_time = self.parse_start_time(start_time)
+        selector.client_provider = client_provider
+        selector.site = site
+        selector.metric = metric
         
         selector.mlab_project = SelectorFileParser.supported_metrics[selector.metric]
         selectors.append(selector)
@@ -245,11 +222,10 @@ class SelectorFileValidator(object):
     def validate_common(self, selector_dict):
         if not selector_dict.has_key('duration'):
             raise ValueError('UnsupportedDuration')
+
         if not selector_dict.has_key('metric') or \
-            (type(selector_dict['metric']) != str and \
-             type(selector_dict['metric']) != unicode) or \
-                (selector_dict['metric'] not in SelectorFileParser.supported_metrics):
-                    raise ValueError('UnsupportedMetric')
+            type(selector_dict['metric']) != list:
+                raise ValueError('MetricsRequiresList')
 
 class SelectorFileValidator1_1(SelectorFileValidator):
     def validate(self, selector_dict):
