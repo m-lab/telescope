@@ -77,7 +77,7 @@ class SelectorFileParser(object):
         values (e.g. metrics, sites), the parser will create a separate 
         Selector object for each combination of those values (e.g. if the file 
         specifies metrics [A, B] and sites: [X, Y, Z] the parser will create 
-        Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z).
+        Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z)).
 
         Args:
           selector_filepath (str): Path to selector file to parse.
@@ -101,7 +101,7 @@ class SelectorFileParser(object):
       flattened for each combination.
       
       Args:
-        selector_json (dict): Unprocessed SelectorJSON file represented as a 
+        selector_json (dict): Unprocessed Selector JSON file represented as a
           dict.
       
       Returns:
