@@ -21,6 +21,7 @@ import json
 import logging
 import os
 import re
+import itertools
 
 import iptranslation
 import utils
@@ -36,7 +37,7 @@ class Selector(object):
     self.metric = None
     self.ip_translation_spec = None
     self.client_provider = None
-    self.site_name = None
+    self.site = None
     self.mlab_project = None
 
   def __repr__(self):
@@ -45,7 +46,10 @@ class Selector(object):
 
     """
 
-    return "<Selector Object (duration: %i)>" % (self.duration)
+    return ("<Selector Object (site: {0}, client_provider: {1}, metric: {2}, " +
+            "start_time: {3}, duration: {4})>").format(self.site,
+                self.client_provider, self.metric, self.start_time.strftime("%Y-%m-%d"),
+                self.duration)
 
 class SelectorFileParser(object):
   """ Parser for Telescope, the primary mechanism for specification of
@@ -62,17 +66,18 @@ class SelectorFileParser(object):
                         'average_rtt': 'ndt',
                         'packet_retransmit_rate': 'ndt'
                       }
-  supported_subset_keys = ["start_time", "client_provider", "site"]
-  
+
   def __init__(self):
     self.logger = logging.getLogger('telescope')
 
   def parse(self, selector_filepath):
-    """ Parses a selector file into one or more Selector objects. Each selector object
-        corresponds to one dataset. If the selector file specifies multiple subsets, the
-        parser will generate a separate selector object for each subset. If the selector
-        file specifies metric:'all', the parser will generate a separate selector object
-        for each supported metric.
+    """ Parses a JSON selector file into a list of one or more Selector objects. 
+        Each Selector object corresponds to one discrete dataset to retrieve 
+        from BigQuery. For fields in the selector file that contain lists of 
+        values (e.g. metrics, sites), the parser will create a separate 
+        Selector object for each combination of those values (e.g. if the file 
+        specifies metrics [A, B] and sites: [X, Y, Z] the parser will create 
+        Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z)).
 
         Args:
           selector_filepath (str): Path to selector file to parse.
@@ -87,25 +92,46 @@ class SelectorFileParser(object):
     selector_input_json = json.loads(selector_file_contents)
     self.validate_selector_input(selector_input_json)
 
-    metrics = []
-    if selector_input_json['metric'] == 'all':
-      metrics.extend(self.supported_metrics.keys())
-    else:
-      metrics.append(selector_input_json['metric'])
-
-    selectors = []
+    selectors = self._parse_input_for_selectors(selector_input_json)
     
-    for metric in metrics:
+    return selectors
+
+  def _parse_input_for_selectors(self, selector_json):
+    """ Parse the selector JSON dictionary and return a list of dictionaries
+      flattened for each combination.
+      
+      Args:
+        selector_json (dict): Unprocessed Selector JSON file represented as a
+          dict.
+      
+      Returns:
+        list: List of dictaries representing the possible combinations of
+          the selector query.
+      
+    """
+    selectors = []
+    has_not_recursed = True
+
+    start_times = selector_json['start_times']
+    client_providers = selector_json['client_providers']
+    sites = selector_json['sites']
+    metrics = selector_json['metrics']
+    
+    for start_time, client_provider, site, metric in \
+            itertools.product(start_times, client_providers, sites, metrics):
+
         selector = Selector()
-        
+        selector.ip_translation_spec = self.parse_ip_translation(selector_json['ip_translation'])
+        selector.duration = self.parse_duration(selector_json['duration'])
+
+        selector.start_time = self.parse_start_time(start_time)
+        selector.client_provider = client_provider
+        selector.site = site
         selector.metric = metric
-        selector.duration = self.parse_duration(selector_input_json['duration'])
-        selector.ip_translation_spec = self.parse_ip_translation(selector_input_json['ip_translation'])
-        selector.mlab_project = SelectorFileParser.supported_metrics[metric]
-        selector.start_time = self.parse_start_time(selector_input_json['start_time'])
-        selector.client_provider = selector_input_json['client_provider']
-        selector.site_name = selector_input_json['site']
+        
+        selector.mlab_project = SelectorFileParser.supported_metrics[selector.metric]
         selectors.append(selector)
+    
     return selectors
 
   def parse_start_time(self, start_time_string):
@@ -199,11 +225,13 @@ class SelectorFileValidator(object):
     def validate_common(self, selector_dict):
         if not selector_dict.has_key('duration'):
             raise ValueError('UnsupportedDuration')
-        if not selector_dict.has_key('metric') or \
-            (type(selector_dict['metric']) != str and \
-             type(selector_dict['metric']) != unicode) or \
-                (selector_dict['metric'] not in SelectorFileParser.supported_metrics and \
-                 selector_dict['metric'] != 'all'):
+
+        if not selector_dict.has_key('metrics') or \
+            type(selector_dict['metrics']) != list:
+                raise ValueError('MetricsRequiresList')
+        else:
+            for metric in selector_dict['metrics']:
+                if metric not in SelectorFileParser.supported_metrics:
                     raise ValueError('UnsupportedMetric')
 
 class SelectorFileValidator1_1(SelectorFileValidator):
