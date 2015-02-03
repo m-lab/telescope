@@ -17,12 +17,14 @@
 
 
 import argparse
-import json
+import copy
 import csv
+import datetime
+import json
+import logging
 import os
 import socket
-import logging
-import datetime
+import random
 import threading
 import time
 import Queue
@@ -261,6 +263,14 @@ def selectors_from_files(selector_files):
       continue
   return selectors
 
+
+def shuffle_selectors(selectors):
+  """ Shuffles a list of selectors into random order. """
+  selectors_copy = copy.copy(selectors)
+  random.shuffle(selectors_copy)
+  return selectors_copy
+
+
 def create_ip_translator(ip_translator_spec):
   factory = telescope.iptranslation.IPTranslationStrategyFactory()
   return factory.create(ip_translator_spec)
@@ -457,6 +467,10 @@ def main(args):
   logger = setup_logger(args.verbosity)
 
   selectors = selectors_from_files(args.selector_in)
+  # The selectors were likely provided in order. Shuffle them to get better
+  # concurrent distribution on BigQuery tables.
+  selectors = shuffle_selectors(selectors)
+
   ip_translator_factory = telescope.iptranslation.IPTranslationStrategyFactory()
   mlab_site_resolver = telescope.mlab.MLabSiteResolver()
   for selector in selectors:
