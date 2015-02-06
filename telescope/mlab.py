@@ -44,18 +44,16 @@ class MLabSiteResolver(object):
             function.
     """
     node_addresses_to_return = []
-
     for node_id in ['mlab1', 'mlab2', 'mlab3']:
       slice_hostname = self._generate_hostname(site_id, node_id, mlab_project)
       ip_address = self._resolve_hostname(slice_hostname)
       node_addresses_to_return.append(ip_address)
-
     return node_addresses_to_return
 
   def _generate_hostname(self, site_id, node_id, mlab_project):
     if mlab_project == 'ndt':
       slice_prefix = "ndt.iupui"
-    elif mlab_project == 'paris-traceroute':
+    elif mlab_project == 'paris_traceroute':
       slice_prefix = "npad.iupui"
     else:
       raise ValueError('UnknownMLabProject')

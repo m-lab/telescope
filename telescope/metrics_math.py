@@ -22,16 +22,15 @@ import mlab
 def calculate_results_list(metric, input_datarows):
   datarows_to_return = []
 
-  if metric == "hop_count":
-    input_datarows = mlab.parse_pt_data(input_datarows)
-
   for datarow in input_datarows:
 
     calculated_result = None
 
     if metric == "hop_count":
       timestamp = datarow['log_time']
-      calculated_result = len(datarow['hops'])
+      calculated_result = datarow['paris_traceroute_hop_dest_ip'] + ', ' + \
+                          datarow['paris_traceroute_hop_src_ip'] + ', ' + \
+                          datarow['connection_spec_client_ip']
     elif metric == "minimum_rtt":
       timestamp = datarow['web100_log_entry_log_time']
       calculated_result = calculate_minrtt(datarow['web100_log_entry_snap_MinRTT'])

@@ -131,7 +131,6 @@ class BigQueryQueryGenerator:
 
     built_query_format = "SELECT\n\t{select_list}\nFROM\n\t{table_list}\nWHERE\n\t{conditional_list}"
     non_null_fields = []
-
     if mlab_project == 'ndt':
       non_null_fields.extend(('connection_spec.data_direction',
                               'web100_log_entry.is_last_entry',
@@ -141,7 +140,7 @@ class BigQueryQueryGenerator:
                               'web100_log_entry.connection_spec.local_ip'))
       tool_specific_conditions = ['project = 0',
                                   'web100_log_entry.is_last_entry = True']
-    elif mlab_project == 'paris-traceroute':
+    elif mlab_project == 'paris_traceroute':
       tool_specific_conditions = ['project = 3']
     else:
       tool_specific_conditions = []

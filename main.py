@@ -580,7 +580,7 @@ if __name__ == "__main__":
                         help='Output file path. If the folder does not exist, it will be created.',
                         type=telescope.utils.create_directory_if_not_exists)
   parser.add_argument('--maxminddir', default='resources/', help='MaxMind GeoLite ASN snapshot directory.')
-  parser.add_argument('--savequery', default=False, action='store_true',
+  parser.add_argument('--savequery', default=True, action='store_true',
                         help='Save the BigQuery statement to the [output] directory as a .sql')
   parser.add_argument('--dryrun', default=False, action='store_true',
                         help='Run up until the query process (best used with --savequery).')

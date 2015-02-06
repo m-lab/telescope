@@ -54,9 +54,9 @@ class SelectorFileParser(object):
 
   """
 
-  """ Not implemented -- 'hop_count': 'paris-traceroute', """
+  """ Not implemented -- 'hop_count': 'paris_traceroute', """
 
-  supported_metrics = {
+  supported_metrics = { 'hop_count': 'paris_traceroute',
                         'download_throughput': 'ndt',
                         'upload_throughput': 'ndt',
                         'minimum_rtt': 'ndt',
@@ -64,7 +64,7 @@ class SelectorFileParser(object):
                         'packet_retransmit_rate': 'ndt'
                       }
 
-  supported_file_format_versions = {'minimum': 1, 'maximum': 1}
+  supported_file_format_versions = {'minimum': 1, 'maximum': 3}
   supported_subset_keys = ["start_time", "client_provider", "site"]
 
   def __init__(self):

@@ -287,7 +287,4 @@ def _filter_packet_retransmit_rate_measurement(measurement):
                 (int(measurement['web100_log_entry_snap_DataSegsOut']) > 0))
 
 def _filter_hop_count_measurement(measurement):
-  """ Hop count measurement validation has yet to be defined.
-
-  """
-  raise NotImplementedError("Hop count validation is not yet defined.")
+  return True
