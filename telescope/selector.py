@@ -20,6 +20,7 @@ import datetime
 import json
 import logging
 import re
+import itertools
 
 import iptranslation
 import utils
@@ -45,12 +46,14 @@ class Selector(object):
     self.metric = None
     self.ip_translation_spec = None
     self.client_provider = None
-    self.site_name = None
+    self.site = None
     self.mlab_project = None
 
   def __repr__(self):
-    return '<Selector Object (duration: %i)>' % (self.duration)
-
+    return ("<Selector Object (site: {0}, client_provider: {1}, metric: {2}, " +
+            "start_time: {3}, duration: {4})>").format(self.site,
+                self.client_provider, self.metric, self.start_time.strftime("%Y-%m-%d"),
+                self.duration)
 
 class SelectorFileParser(object):
   """Parser for Telescope selector files.
@@ -68,19 +71,18 @@ class SelectorFileParser(object):
       'packet_retransmit_rate': 'ndt'
       }
 
-  supported_file_format_versions = {'minimum': 1, 'maximum': 1}
-  supported_subset_keys = ['start_time', 'client_provider', 'site']
-
   def __init__(self):
     self.logger = logging.getLogger('telescope')
 
   def parse(self, selector_filepath):
     """Parses a selector file into one or more Selector objects.
 
-    Each selector object corresponds to one dataset. If the selector file
-    specifies multiple subsets, the parser will generate a separate selector
-    object for each subset. If the selector file specifies metric:'all', the
-    parser will generate a separate selector object for each supported metric.
+    Each Selector object corresponds to one discrete dataset to retrieve
+    from BigQuery. For fields in the selector file that contain lists of
+    values (e.g. metrics, sites), the parser will create a separate
+    Selector object for each combination of those values (e.g. if the file
+    specifies metrics [A, B] and sites: [X, Y, Z] the parser will create
+    Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z)).
 
     Args:
       selector_filepath: (str) Path to selector file to parse.
@@ -95,27 +97,40 @@ class SelectorFileParser(object):
     selector_input_json = json.loads(selector_file_contents)
     self._validate_selector_input(selector_input_json)
 
-    metrics = []
-    if selector_input_json['metric'] == 'all':
-      metrics.extend(self.supported_metrics.keys())
-    else:
-      metrics.append(selector_input_json['metric'])
+    selectors = self._parse_input_for_selectors(selector_input_json)
 
+    return selectors
+
+  def _parse_input_for_selectors(self, selector_json):
+    """ Parse the selector JSON dictionary and return a list of dictionaries
+      flattened for each combination.
+
+      Args:
+        selector_json (dict): Unprocessed Selector JSON file represented as a
+          dict.
+
+      Returns:
+        list: List of dictaries representing the possible combinations of
+          the selector query.
+    """
     selectors = []
-    for selector_subset in selector_input_json['subsets']:
-      for metric in metrics:
-        selector = Selector()
-        selector.start_time = (
-            self._parse_start_time(selector_subset['start_time']))
-        selector.duration = (
-            self._parse_duration(selector_input_json['duration']))
-        selector.metric = metric
-        selector.ip_translation_spec = (
-            self._parse_ip_translation(selector_input_json['ip_translation']))
-        selector.client_provider = selector_subset['client_provider']
-        selector.site_name = selector_subset['site']
-        selector.mlab_project = SelectorFileParser.supported_metrics[metric]
+    has_not_recursed = True
 
+    start_times = selector_json['start_times']
+    client_providers = selector_json['client_providers']
+    sites = selector_json['sites']
+    metrics = selector_json['metrics']
+
+    for start_time, client_provider, site, metric in \
+            itertools.product(start_times, client_providers, sites, metrics):
+        selector = Selector()
+        selector.ip_translation_spec = self._parse_ip_translation(selector_json['ip_translation'])
+        selector.duration = self._parse_duration(selector_json['duration'])
+        selector.start_time = self._parse_start_time(start_time)
+        selector.client_provider = client_provider
+        selector.site = site
+        selector.metric = metric
+        selector.mlab_project = SelectorFileParser.supported_metrics[selector.metric]
         selectors.append(selector)
 
     return selectors
@@ -199,63 +214,37 @@ class SelectorFileParser(object):
                        e.args[0])
 
   def _validate_selector_input(self, selector_dict):
-    min_version = self.supported_file_format_versions['minimum']
-    max_version = self.supported_file_format_versions['maximum']
-    if (not selector_dict.has_key('file_format_version') or
-        selector_dict['file_format_version'] < min_version or
-        selector_dict['file_format_version'] > max_version):
-      raise ValueError('UnsupportedSelectorVersion')
+    if not selector_dict.has_key('file_format_version'):
+        raise ValueError('NoSelectorVersionSpecified')
+    elif selector_dict['file_format_version'] == 1.0:
+        raise ValueError('DeprecatedSelectorVersion')
+    elif selector_dict['file_format_version'] == 1.1:
+        parser_validator = SelectorFileValidator1_1()
+    else:
+        raise ValueError('UnsupportedSelectorVersion')
 
-    if not selector_dict.has_key('duration'):
-      raise ValueError('UnsupportedDuration')
+    parser_validator.validate(selector_dict)
 
-    if (not selector_dict.has_key('metric') or
-        (type(selector_dict['metric']) != str and
-         type(selector_dict['metric']) != unicode) or
-        (selector_dict['metric'] not in self.supported_metrics and
-         selector_dict['metric'] != 'all')):
-      raise ValueError('UnsupportedMetric')
 
-    # For now we only support subset specifications with 1 or 2 (isp, site,
-    # client) tuples.
-    if len(selector_dict['subsets']) > 2 or len(selector_dict['subsets']) < 1:
-      raise ValueError('UnsupportedSubsetSize')
+class SelectorFileValidator(object):
+    def validate(self, selector_dict):
+        raise NotImplementedError('Subclasses must implement this function.')
+    def validate_common(self, selector_dict):
+        if not selector_dict.has_key('duration'):
+            raise ValueError('UnsupportedDuration')
 
-    if (not selector_dict.has_key('subsets') or
-        type(selector_dict['subsets']) != list):
-      raise ValueError('UnsupportedSubsets')
+        if not selector_dict.has_key('metrics') or \
+            type(selector_dict['metrics']) != list:
+                raise ValueError('MetricsRequiresList')
+        else:
+            for metric in selector_dict['metrics']:
+                if metric not in SelectorFileParser.supported_metrics:
+                    raise ValueError('UnsupportedMetric')
 
-    for tuple_set in selector_dict['subsets']:
-      if sorted(tuple_set.keys()) != sorted(self.supported_subset_keys):
-        raise ValueError('UnsupportedSubsetDefinition')
 
-    # Selectors should contained two control variables and one independendent
-    # variable.
-    if len(selector_dict['subsets']) == 2:
-      self._find_independent_variable(selector_dict['subsets'])
-
-    return True
-
-  def _find_independent_variable(self, subsets):
-    """Find the independent variable between two subsets.
-
-    Args:
-      subsets: (list) List of length 2 with (isp, site, timestamp) dicts.
-
-    Returns:
-      str: name of the key that is different between the two tuples.
-    """
-    independent_variable = None
-
-    for key in subsets[0].keys():
-      if subsets[0][key] != subsets[1][key] and independent_variable is None:
-        independent_variable = key
-      elif (subsets[0][key] != subsets[1][key] and
-            independent_variable is not None):
-        raise ValueError('IncomparableSets')
-
-    if independent_variable is None:
-      raise Exception('NoIndependentVariable')
-
-    return independent_variable
+class SelectorFileValidator1_1(SelectorFileValidator):
+    def validate(self, selector_dict):
+        self.validate_common(selector_dict)
+        if selector_dict.has_key('subsets'):
+            raise ValueError('SubsetsNoLongerSupported')
 

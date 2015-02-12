@@ -19,6 +19,7 @@
 import copy
 import datetime
 import unittest
+import itertools
 
 import iptranslation
 import selector
@@ -37,7 +38,7 @@ class SelectorTest(unittest.TestCase):
     self.assertEqual(selector_expected.ip_translation_spec.strategy_name,
                      selector_actual.ip_translation_spec.strategy_name)
     self.assertDictEqual(selector_expected.ip_translation_spec.params, selector_actual.ip_translation_spec.params)
-    self.assertEqual(selector_expected.site_name, selector_actual.site_name)
+    self.assertEqual(selector_expected.site, selector_actual.site)
     self.assertEqual(selector_expected.client_provider, selector_actual.client_provider)
 
   def assertParsedSelectorsMatch(self, selectors_expected, selector_file_contents):
@@ -52,209 +53,129 @@ class SelectorTest(unittest.TestCase):
   def assertParsedSingleSelectorMatches(self, selector_expected, selector_file_contents):
     self.assertParsedSelectorsMatch([selector_expected], selector_file_contents)
 
-  def testValidSingleSubset(self):
+  def testDeprecatedFileFormats(self):
     selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
+           "file_format_version": 1,
+           "duration": "30d",
+           "metrics":"average_rtt",
+           "ip_translation":{
+             "strategy":"maxmind",
+             "params":{
+               "db_snapshots":["2014-08-04"]
+             }
+           },
+           "subsets":[
+              {
+                 "site":"lga02",
+                 "client_provider":"comcast",
+                 "start_time":"2014-02-01T00:00:00Z"
+              }
+           ]
+        }"""
+    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+  
+  def testDeprecatedSubsetFunction(self):
+    selector_file_contents = """{
+              "file_format_version": 1.1,
+              "duration": "30d",
+              "metrics":"average_rtt",
+              "ip_translation":{
+                  "strategy":"maxmind",
+                  "params":{
+                      "db_snapshots":["2014-08-04"]
+                  }
+          },
+          "subsets":[
+              {
+                  "site":"lga02",
+                  "client_provider":"comcast",
+                  "start_time":"2014-02-01T00:00:00Z"
+              },
+              {
+                  "site":"lga01",
+                  "client_provider":"comcast",
+                  "start_time":"2014-02-01T00:00:00Z"
+              }
+              ]
+          }"""
+    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+  
+  def testValidInput_v1dot1_Simple(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "sites": ["lga02"],
+            "client_providers": ["comcast"],
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
     selector_expected = selector.Selector()
     selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
     selector_expected.duration = 30 * 24 * 60 * 60
     selector_expected.metric = 'average_rtt'
     selector_expected.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector_expected.site_name = 'lga02'
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    selector_expected.site = 'lga02'
     selector_expected.client_provider = 'comcast'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
-  def testValidDoubleSubset(self):
+  def testValidInput_v1dot1_Complex(self):
     selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga01",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
-    selector1_expected = selector.Selector()
-    selector1_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
-    selector1_expected.duration = 30 * 24 * 60 * 60
-    selector1_expected.metric = 'average_rtt'
-    selector1_expected.site_name = 'lga02'
-    selector1_expected.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector1_expected.client_provider = 'comcast'
-
-    selector2_expected = selector.Selector()
-    selector2_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
-    selector2_expected.duration = 30 * 24 * 60 * 60
-    selector2_expected.metric = 'average_rtt'
-    selector2_expected.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector2_expected.site_name = 'lga01'
-    selector2_expected.client_provider = 'comcast'
-
-    selectors_expected = [selector1_expected, selector2_expected]
-
-    self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
-
-  def testValidSingleSubsetAllMetric(self):
-    selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"all",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["minimum_rtt", "download_throughput", "average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "sites": ["lga01", "lga02"],
+            "client_providers": ["comcast", "verizon"],
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    
+    selectors_expected = []
     selector_base = selector.Selector()
     selector_base.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
     selector_base.duration = 30 * 24 * 60 * 60
-    selector_base.metric = 'average_rtt'
     selector_base.ip_translation_spec = (
-        iptranslation.IPTranslationStrategySpec('maxmind',
-                                                {'db_snapshots': ['2014-08-04']}))
-    selector_base.site_name = 'lga02'
-    selector_base.client_provider = 'comcast'
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    sites = ['lga01', 'lga02']
+    client_providers = ['comcast', 'verizon']
+    metrics = ['minimum_rtt', 'download_throughput', 'average_rtt']
 
-    selectors_expected = []
-    # TODO(mtlynch): Need to fix this test so that changing the order of the
-    # expected_metrics list doesn't cause the test to fail.
-    expected_metrics = (
-        'minimum_rtt',
-        'upload_throughput',
-        'packet_retransmit_rate',
-        'download_throughput',
-        'average_rtt'
-        )
-
-    for metric in expected_metrics:
+    for client_provider, site, metric in itertools.product(client_providers, sites, metrics):
       selector_copy = copy.copy(selector_base)
       selector_copy.metric = metric
+      selector_copy.client_provider = client_provider
+      selector_copy.site = site
       selectors_expected.append(selector_copy)
 
-    # The 'all' metric should expand to selectors for every supported metric.
     self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
-
-  def testDoubleSubsetNoIndependentVariable(self):
-    selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
-    # The subsets are identical (no independent variable), so this should fail.
-    self.assertRaises(Exception, self.parse_file_contents, selector_file_contents)
-
-  def testDoubleSubsetTooManyIndependentVariables(self):
-    selector_file_contents = """{
-   "file_format_version": 1,
-   "duration": "30d",
-   "metric":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
-     }
-   },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga01",
-         "client_provider":"cablevision",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
-}"""
-    # The subsets contain two independent variables, so this should fail
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
 
   def testInvalidJson(self):
     selector_file_contents = """{
    "file_format_version": 1,
    "duration": "30d",
-   "metric":"average_rtt",
+   "metrics":"average_rtt",
    "ip_translation":{
      "strategy":"maxmind",
      "params":{
        "db_snapshots":["2014-08-04"]
      }
    },
-   "subsets":[
-      {
-         "site":"lga02",
-         "client_provider":"comcast",
-         "start_time":"2014-02-01T00:00:00Z"
-      },
-      {
-         "site":"lga01",
-         "client_provider":"cablevision",
-         "start_time":"2014-02-01T00:00:00Z"
-      }
-   ]
+    "sites":"lga02",
+    "client_providers":"comcast",
+    "start_times":"2014-02-01T00:00:00Z"
 """
     # The final closing curly brace is missing, so this should fail
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)

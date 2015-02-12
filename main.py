@@ -305,11 +305,11 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
 
   server_ips = []
   try:
-    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site_name,
+    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site,
                                                              mlab_project = selector.mlab_project):
       server_ips.append(retrieved_site_ip)
       logger.debug("Found IP for {site} of {site_ip} on test {test}.".format(
-          site=selector.site_name, site_ip = retrieved_site_ip, test = selector.mlab_project))
+          site=selector.site, site_ip = retrieved_site_ip, test = selector.mlab_project))
   except Exception as caught_error:
     raise MLabServerResolutionFailed(caught_error)
 
@@ -477,7 +477,7 @@ def main(args):
     thread_metadata = {
                       'date': selector.start_time.strftime('%Y-%m-%d-%H%M%S'),
                       'duration': duration_to_string(selector.duration),
-                      'site': selector.site_name,
+                      'site': selector.site,
                       'client_provider': selector.client_provider,
                       'metric': selector.metric,
                       'mlab_project': selector.mlab_project,
