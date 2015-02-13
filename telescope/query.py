@@ -76,10 +76,9 @@ class BigQueryQueryGenerator(object):
                       dateutil.relativedelta.relativedelta(months=1) -
                       datetime.timedelta(seconds=1))
 
-    months_list = list(
-        rrule.rrule(rrule.MONTHLY, dtstart=start_time_fixed).between(
-            start_time_fixed, end_time_fixed, inc=True))
-    for iterated_month in months_list:
+    months = rrule.rrule(rrule.MONTHLY, dtstart=start_time_fixed).between(
+            start_time_fixed, end_time_fixed, inc=True)
+    for iterated_month in months:
       iterated_table = BigQueryQueryGenerator.table_format.format(
           database_name=self.database_name,
           table_date=iterated_month.strftime('%Y_%m'))
