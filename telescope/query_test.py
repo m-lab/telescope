@@ -15,13 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import datetime
-import unittest
 import re
+import unittest
 
 import query
 import utils
+
 
 class BigQueryQueryGeneratorTest(unittest.TestCase):
 
@@ -31,9 +31,9 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
   def normalize_whitespace(self, original):
     return re.sub(r'\s+', ' ', original).strip()
 
-  def split_and_normalize_query(self, query):
+  def split_and_normalize_query(self, query_string):
     lines = []
-    for line in query.splitlines():
+    for line in query_string.splitlines():
       # omit blank lines
       if not line:
         continue
@@ -46,7 +46,8 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
 
     self.assertSequenceEqual(expected_lines, actual_lines)
 
-  def generate_ndt_query(self, start_time, end_time, metric, server_ips, client_ip_blocks):
+  def generate_ndt_query(self, start_time, end_time, metric, server_ips,
+                         client_ip_blocks):
     start_time_utc = utils.make_datetime_utc_aware(start_time)
     end_time_utc = utils.make_datetime_utc_aware(end_time)
     generator = query.BigQueryQueryGenerator(start_time_utc,
@@ -57,35 +58,39 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
                                              client_ip_blocks)
     return generator.query()
 
-  def generate_download_throughput_query(self, start_time, end_time, server_ips, client_ip_blocks):
+  def generate_download_throughput_query(self, start_time, end_time,
+                                         server_ips, client_ip_blocks):
     return self.generate_ndt_query(start_time,
                                    end_time,
                                    'download_throughput',
                                    server_ips,
                                    client_ip_blocks)
 
-  def generate_upload_throughput_query(self, start_time, end_time, server_ips, client_ip_blocks):
+  def generate_upload_throughput_query(self, start_time, end_time, server_ips,
+                                       client_ip_blocks):
     return self.generate_ndt_query(start_time,
                                    end_time,
                                    'upload_throughput',
                                    server_ips,
                                    client_ip_blocks)
 
-  def generate_average_rtt_query(self, start_time, end_time, server_ips, client_ip_blocks):
+  def generate_average_rtt_query(self, start_time, end_time, server_ips,
+                                 client_ip_blocks):
     return self.generate_ndt_query(start_time,
                                    end_time,
                                    'average_rtt',
                                    server_ips,
                                    client_ip_blocks)
 
-  def generate_minimum_rtt_query(self, start_time, end_time, server_ips, client_ip_blocks):
+  def generate_minimum_rtt_query(self, start_time, end_time, server_ips,
+                                 client_ip_blocks):
     return self.generate_ndt_query(start_time,
                                    end_time,
                                    'minimum_rtt',
                                    server_ips,
                                    client_ip_blocks)
 
-  def testNdtQueriesHaveNoTrailingWhitespace(self):
+  def test_ndt_queries_have_no_trailing_whitespace(self):
     start_time = datetime.datetime(2012, 1, 1)
     end_time = datetime.datetime(2014, 10, 15)
     server_ips = ['1.1.1.1', '2.2.2.2']
@@ -93,13 +98,16 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
         (5, 10),
         (35, 80)
         ]
-    query_generators = (self.generate_average_rtt_query, self.generate_minimum_rtt_query,
-                        self.generate_upload_throughput_query, self.generate_download_throughput_query)
+    query_generators = (self.generate_average_rtt_query,
+                        self.generate_minimum_rtt_query,
+                        self.generate_upload_throughput_query,
+                        self.generate_download_throughput_query)
     for query_generator in query_generators:
-      generated_query = query_generator(start_time, end_time, server_ips, client_ip_blocks)
-      self.assertNotRegexpMatches(generated_query, '.*\s\n')
+      generated_query = query_generator(start_time, end_time, server_ips,
+                                        client_ip_blocks)
+      self.assertNotRegexpMatches(generated_query, r'.*\s\n')
 
-  def testNdtDownloadThroughputQueryFullMonth(self):
+  def test_ndt_download_throughput_query_full_month(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1)
     server_ips = ['1.1.1.1', '2.2.2.2']
@@ -140,8 +148,7 @@ WHERE
        PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 35 AND 80)"""
     self.assertQueriesEqual(query_expected, query_actual)
 
-
-  def testNdtDownloadThroughputQueryFullMonthPlusOneSecond(self):
+  def test_ndt_download_throughput_query_full_month_plus_one_second(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1, 0, 0, 1)
     server_ips = ['1.1.1.1',]
@@ -178,7 +185,7 @@ WHERE
   AND (PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 5 AND 10)"""
     self.assertQueriesEqual(query_expected, query_actual)
 
-  def testNdtUploadThroughputQueryFullMonth(self):
+  def test_ndt_upload_throughput_query_full_month(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1)
     server_ips = ['1.1.1.1', '2.2.2.2']
@@ -216,7 +223,7 @@ WHERE
        PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 35 AND 80)"""
     self.assertQueriesEqual(query_expected, query_actual)
 
-  def testNdtAverageRttQueryFullMonth(self):
+  def test_ndt_average_rtt_query_full_month(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1)
     server_ips = ['1.1.1.1', '2.2.2.2']
@@ -259,7 +266,7 @@ WHERE
        PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 35 AND 80)"""
     self.assertQueriesEqual(query_expected, query_actual)
 
-  def testNdtMinRttQueryFullMonth(self):
+  def test_ndt_min_rtt_query_full_month(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1)
     server_ips = ['1.1.1.1', '2.2.2.2']
@@ -305,3 +312,4 @@ WHERE
 
 if __name__ == '__main__':
   unittest.main()
+
