@@ -141,15 +141,10 @@ def _filter_s2c_measurement(measurement):
 
   assert int(measurement['connection_spec_data_direction']) == 1
 
-  if not ((int(measurement['web100_log_entry_snap_SndLimTimeRwin']) +
-           int(measurement['web100_log_entry_snap_SndLimTimeCwnd']) +
-           int(measurement['web100_log_entry_snap_SndLimTimeSnd']))
-          >= _MINIMUM_DURATION):
-    return False
-  if not ((int(measurement['web100_log_entry_snap_SndLimTimeRwin']) +
-           int(measurement['web100_log_entry_snap_SndLimTimeCwnd']) +
-           int(measurement['web100_log_entry_snap_SndLimTimeSnd']))
-          < _MAXIMUM_DURATION):
+  total_time = (int(measurement['web100_log_entry_snap_SndLimTimeRwin']) +
+                int(measurement['web100_log_entry_snap_SndLimTimeCwnd']) +
+                int(measurement['web100_log_entry_snap_SndLimTimeSnd']))
+  if not (_MINIMUM_DURATION <= total_time < _MAXIMUM_DURATION):
     return False
   if not (int(measurement['web100_log_entry_snap_HCThruOctetsAcked'])
           >= _MINIMUM_PACKETS):
