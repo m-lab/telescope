@@ -130,7 +130,7 @@ SELECT
   web100_log_entry.snap.SndLimTimeSnd,
   web100_log_entry.snap.State
 FROM
-  [measurement-lab:m_lab.2014_01]
+  [plx.google:m_lab.2014_01.all]
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -168,8 +168,8 @@ SELECT
   web100_log_entry.snap.SndLimTimeSnd,
   web100_log_entry.snap.State
 FROM
-  [measurement-lab:m_lab.2014_01],
-  [measurement-lab:m_lab.2014_02]
+  [plx.google:m_lab.2014_01.all],
+  [plx.google:m_lab.2014_02.all]
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -205,7 +205,7 @@ SELECT
   web100_log_entry.snap.HCThruOctetsReceived,
   web100_log_entry.snap.State
 FROM
-  [measurement-lab:m_lab.2014_01]
+  [plx.google:m_lab.2014_01.all]
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -248,7 +248,7 @@ SELECT
   web100_log_entry.snap.State,
   web100_log_entry.snap.SumRTT
 FROM
-  [measurement-lab:m_lab.2014_01]
+  [plx.google:m_lab.2014_01.all]
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -291,7 +291,7 @@ SELECT
   web100_log_entry.snap.SndLimTimeSnd,
   web100_log_entry.snap.State
 FROM
-  [measurement-lab:m_lab.2014_01]
+  [plx.google:m_lab.2014_01.all]
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL

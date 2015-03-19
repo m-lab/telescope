@@ -25,8 +25,8 @@ import utils
 
 class BigQueryQueryGenerator(object):
 
-  database_name = 'measurement-lab'
-  table_format = '[{database_name}:m_lab.{table_date}]'
+  database_name = 'plx.google'
+  table_format = '[{database_name}:m_lab.{table_date}.all]'
 
   def __init__(self, start_time, end_time, metric, project, server_ips,
                client_ip_blocks):
