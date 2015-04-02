@@ -19,7 +19,6 @@
 import copy
 import datetime
 import json
-import re
 import unittest
 
 import iptranslation
@@ -295,7 +294,7 @@ class SelectorJsonEncoderTest(unittest.TestCase):
         "client_provider":"twc",
         "start_time":"2015-04-02T10:27:34Z"
      }
-]
+  ]
 }"""
     encoded_actual = selector.SelectorJsonEncoder().encode(s)
     self.assertJsonEqual(encoded_expected, encoded_actual)
@@ -327,7 +326,7 @@ class SelectorJsonEncoderTest(unittest.TestCase):
         "client_provider":"comcast",
         "start_time":"2014-02-01T00:00:00Z"
      }
-]
+  ]
 }"""
     encoded_actual = selector.SelectorJsonEncoder().encode(s)
     self.assertJsonEqual(encoded_expected, encoded_actual)
