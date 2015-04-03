@@ -15,25 +15,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import csv
 import datetime
 import logging
 import os
 import re
 
+
 class MissingMaxMindError(Exception):
   def __init__(self, db_location, io_error):
-    Exception.__init__(self, 'Failed to open MaxMind database at %s\nError: %s' % (db_location, io_error))
+    Exception.__init__(self,
+                       'Failed to open MaxMind database at %s\nError: %s' % (
+                           db_location, io_error))
+
 
 class IPTranslationStrategySpec(object):
-  """ Specification of parameters required to create an IPTranslationStrategy
-      object.
+  """Specification of how to create an IPTranslationStrategy object.
 
+  Specifies the parameters required for IPTranslationFactory to create an
+  IPTranslationStrategy object.
+
+  Attributes:
+    strategy_name: (str) The name of this IP translation strategy.
+    params: (dict) A dictionary of parameters specific to this type of IP
+      translation strategy.
   """
   def __init__(self, strategy_name, params):
     self.strategy_name = strategy_name
     self.params = params
+
 
 class IPTranslationStrategyFactory(object):
 

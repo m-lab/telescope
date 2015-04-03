@@ -18,13 +18,15 @@
 
 import copy
 import datetime
+import json
 import unittest
 
 import iptranslation
 import selector
 import utils
 
-class SelectorTest(unittest.TestCase):
+
+class SelectorFileParserTest(unittest.TestCase):
 
   def parse_file_contents(self, selector_file_contents):
     parser = selector.SelectorFileParser()
@@ -258,6 +260,76 @@ class SelectorTest(unittest.TestCase):
 """
     # The final closing curly brace is missing, so this should fail
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+
+
+class SelectorJsonEncoderTest(unittest.TestCase):
+
+  def assertJsonEqual(self, expected, actual):
+    self.assertDictEqual(json.loads(expected), json.loads(actual))
+
+  def testEncodeSimpleSelectorA(self):
+    s = selector.Selector()
+    s.start_time = datetime.datetime(2015, 4, 2, 10, 27, 34)
+    s.duration = 45
+    s.site_name = 'mia01'
+    s.client_provider = 'twc'
+    s.metric = 'upload_throughput'
+    s.ip_translation_spec = (iptranslation.IPTranslationStrategySpec(
+        'maxmind', {'db_snapshots': ['2015-02-05']}))
+
+    encoded_expected = """
+{
+  "file_format_version": 1.0,
+  "duration": "45d",
+  "metric":"upload_throughput",
+  "ip_translation":{
+    "strategy":"maxmind",
+    "params":{
+      "db_snapshots":["2015-02-05"]
+    }
+  },
+  "subsets":[
+     {
+        "site":"mia01",
+        "client_provider":"twc",
+        "start_time":"2015-04-02T10:27:34Z"
+     }
+  ]
+}"""
+    encoded_actual = selector.SelectorJsonEncoder().encode(s)
+    self.assertJsonEqual(encoded_expected, encoded_actual)
+
+  def testEncodeSimpleSelectorB(self):
+    s = selector.Selector()
+    s.start_time = datetime.datetime(2014, 2, 1)
+    s.duration = 22
+    s.site_name = 'lga02'
+    s.client_provider = 'comcast'
+    s.metric = 'download_throughput'
+    s.ip_translation_spec = (iptranslation.IPTranslationStrategySpec(
+        'maxmind', {'db_snapshots': ['2014-08-04']}))
+
+    encoded_expected = """
+{
+  "file_format_version": 1.0,
+  "duration": "22d",
+  "metric":"download_throughput",
+  "ip_translation":{
+    "strategy":"maxmind",
+    "params":{
+      "db_snapshots":["2014-08-04"]
+    }
+  },
+  "subsets":[
+     {
+        "site":"lga02",
+        "client_provider":"comcast",
+        "start_time":"2014-02-01T00:00:00Z"
+     }
+  ]
+}"""
+    encoded_actual = selector.SelectorJsonEncoder().encode(s)
+    self.assertJsonEqual(encoded_expected, encoded_actual)
 
 
 if __name__ == '__main__':

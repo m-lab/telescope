@@ -259,3 +259,38 @@ class SelectorFileParser(object):
 
     return independent_variable
 
+
+class SelectorJsonEncoder(json.JSONEncoder):
+  """Encode Telescope selector into JSON."""
+
+  def default(self, obj):
+    if isinstance(obj, Selector):
+      return self._encode_selector(obj)
+    return json.JSONEncoder.default(self, obj)
+
+  def _encode_selector(self, selector):
+    return {
+        'file_format_version': 1.0,
+        'duration': self._encode_duration(selector.duration),
+        'metric': selector.metric,
+        'ip_translation': self._encode_ip_translation(
+            selector.ip_translation_spec),
+        'subsets': [
+            {
+                'site': selector.site_name,
+                'client_provider': selector.client_provider,
+                'start_time': datetime.datetime.strftime(selector.start_time,
+                                                         '%Y-%m-%dT%H:%M:%SZ')
+            }
+            ]
+        }
+
+  def _encode_duration(self, duration):
+    return str(duration) + 'd'
+
+  def _encode_ip_translation(self, ip_translation):
+    return {
+        'strategy': ip_translation.strategy_name,
+        'params': ip_translation.params,
+        }
+
