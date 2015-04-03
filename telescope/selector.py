@@ -26,6 +26,14 @@ import iptranslation
 import utils
 
 
+_metric_to_project = {
+  'download_throughput': 'ndt',
+  'upload_throughput': 'ndt',
+  'minimum_rtt': 'ndt',
+  'average_rtt': 'ndt',
+  'packet_retransmit_rate': 'ndt'
+  }
+
 class Selector(object):
   """Represents the data required to select a dataset from the M-Lab data.
 
@@ -55,22 +63,55 @@ class Selector(object):
                 self.client_provider, self.metric, self.start_time.strftime("%Y-%m-%d"),
                 self.duration)
 
+
+class MultiSelector(object):
+  """Represents a set of Selector objects.
+
+   Attributes:
+     start_times: (list) A list of datetimes indicating the start times of the
+       child Selectors.
+     duration: (int) Duration of time window in seconds for child Selectors.
+       Note that duation is a scalar, as a list would result in Selectors that
+       overlap.
+     metrics: (list) A list of metrics contained in child Selectors.
+     ip_translation_spec: (iptranslation.IPTranslationStrategySpec) Specifies
+       how to translate the IP address information.
+     client_providers: (list) List of string names of providers in the child
+       Selectors.
+     site_names: (list) List of M-Lab sites in the child Selectors..
+  """
+  def __init__(self):
+    self.start_times = None
+    self.duration = None
+    self.metrics = None
+    self.ip_translation_spec = None
+    self.client_providers = None
+    self.sites = None
+
+  def split(self):
+    """Splits a MultiSelector into an equivalent list of Selectors."""
+    selectors = []
+    selector_product = itertools.product(
+        self.start_times, self.client_providers, self.sites, self.metrics)
+    for start_time, client_provider, site, metric in selector_product:
+        selector = Selector()
+        selector.ip_translation_spec = self.ip_translation_spec
+        selector.duration = self.duration
+        selector.start_time = start_time
+        selector.client_provider = client_provider
+        selector.site = site
+        selector.metric = metric
+        selector.mlab_project = _metric_to_project[metric]
+        selectors.append(selector)
+    return selectors
+
+
 class SelectorFileParser(object):
   """Parser for Telescope selector files.
 
   Parses selector files, the primary mechanism for specification of measurement
   targets.
   """
-  # Not implemented -- 'hop_count': 'paris-traceroute',
-
-  supported_metrics = {
-      'download_throughput': 'ndt',
-      'upload_throughput': 'ndt',
-      'minimum_rtt': 'ndt',
-      'average_rtt': 'ndt',
-      'packet_retransmit_rate': 'ndt'
-      }
-
   def __init__(self):
     self.logger = logging.getLogger('telescope')
 
@@ -88,7 +129,7 @@ class SelectorFileParser(object):
       selector_filepath: (str) Path to selector file to parse.
 
     Returns:
-      list: A list of parsed selector objects.
+      list: A list of parsed Selector objects.
     """
     with open(selector_filepath, 'r') as selector_fileinput:
       return self._parse_file_contents(selector_fileinput.read())
@@ -102,38 +143,33 @@ class SelectorFileParser(object):
     return selectors
 
   def _parse_input_for_selectors(self, selector_json):
-    """ Parse the selector JSON dictionary and return a list of dictionaries
-      flattened for each combination.
+    """Parse the selector JSON dictionary and return a list of dictionaries
+    flattened for each combination.
 
-      Args:
-        selector_json (dict): Unprocessed Selector JSON file represented as a
-          dict.
+    Args:
+      selector_json (dict): Unprocessed Selector JSON file represented as a
+        dict.
 
-      Returns:
-        list: List of dictaries representing the possible combinations of
-          the selector query.
+    Returns:
+      list: A list of parsed Selector objects.
     """
-    selectors = []
-    has_not_recursed = True
+    multi_selector = MultiSelector()
+    multi_selector.start_times = self._parse_start_times(
+        selector_json['start_times'])
+    multi_selector.client_providers = selector_json['client_providers']
+    multi_selector.sites = selector_json['sites']
+    multi_selector.metrics = selector_json['metrics']
+    multi_selector.duration = self._parse_duration(selector_json['duration'])
+    multi_selector.ip_translation_spec = self._parse_ip_translation(
+        selector_json['ip_translation'])
 
-    start_times = selector_json['start_times']
-    client_providers = selector_json['client_providers']
-    sites = selector_json['sites']
-    metrics = selector_json['metrics']
+    return multi_selector.split()
 
-    for start_time, client_provider, site, metric in \
-            itertools.product(start_times, client_providers, sites, metrics):
-        selector = Selector()
-        selector.ip_translation_spec = self._parse_ip_translation(selector_json['ip_translation'])
-        selector.duration = self._parse_duration(selector_json['duration'])
-        selector.start_time = self._parse_start_time(start_time)
-        selector.client_provider = client_provider
-        selector.site = site
-        selector.metric = metric
-        selector.mlab_project = SelectorFileParser.supported_metrics[selector.metric]
-        selectors.append(selector)
-
-    return selectors
+  def _parse_start_times(self, start_times_raw):
+    start_times = []
+    for start_time_string in start_times_raw:
+      start_times.append(self._parse_start_time(start_time_string))
+    return start_times
 
   def _parse_start_time(self, start_time_string):
     """Parse the time window start time.
@@ -238,7 +274,7 @@ class SelectorFileValidator(object):
                 raise ValueError('MetricsRequiresList')
         else:
             for metric in selector_dict['metrics']:
-                if metric not in SelectorFileParser.supported_metrics:
+                if metric not in _metric_to_project:
                     raise ValueError('UnsupportedMetric')
 
 
@@ -249,29 +285,24 @@ class SelectorFileValidator1_1(SelectorFileValidator):
             raise ValueError('SubsetsNoLongerSupported')
 
 
-class SelectorJsonEncoder(json.JSONEncoder):
-  """Encode Telescope selector into JSON."""
+class MultiSelectorJsonEncoder(json.JSONEncoder):
+  """Encode Telescope multi-selector into JSON."""
 
   def default(self, obj):
-    if isinstance(obj, Selector):
-      return self._encode_selector(obj)
+    if isinstance(obj, MultiSelector):
+      return self._encode_multi_selector(obj)
     return json.JSONEncoder.default(self, obj)
 
-  def _encode_selector(self, selector):
+  def _encode_multi_selector(self, selector):
     return {
-        'file_format_version': 1.0,
+        'file_format_version': 1.1,
         'duration': self._encode_duration(selector.duration),
-        'metric': selector.metric,
+        'metrics': selector.metrics,
         'ip_translation': self._encode_ip_translation(
             selector.ip_translation_spec),
-        'subsets': [
-            {
-                'site': selector.site_name,
-                'client_provider': selector.client_provider,
-                'start_time': datetime.datetime.strftime(selector.start_time,
-                                                         '%Y-%m-%dT%H:%M:%SZ')
-            }
-            ]
+        'sites': selector.site_names,
+        'client_providers': selector.client_providers,
+        'start_times': self._encode_start_times(selector.start_times)
         }
 
   def _encode_duration(self, duration):
@@ -282,4 +313,11 @@ class SelectorJsonEncoder(json.JSONEncoder):
         'strategy': ip_translation.strategy_name,
         'params': ip_translation.params,
         }
+
+  def _encode_start_times(self, start_times):
+    encoded_start_times = []
+    for start_time in start_times:
+      encoded_start_times.append(datetime.datetime.strftime(
+          start_time, '%Y-%m-%dT%H:%M:%SZ'))
+    return encoded_start_times
 

@@ -75,7 +75,7 @@ class SelectorFileParserTest(unittest.TestCase):
            ]
         }"""
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
-  
+
   def testDeprecatedSubsetFunction(self):
     selector_file_contents = """{
               "file_format_version": 1.1,
@@ -101,7 +101,7 @@ class SelectorFileParserTest(unittest.TestCase):
               ]
           }"""
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
-  
+
   def testValidInput_v1dot1_Simple(self):
     selector_file_contents = """{
             "file_format_version": 1.1,
@@ -143,7 +143,7 @@ class SelectorFileParserTest(unittest.TestCase):
             "client_providers": ["comcast", "verizon"],
             "start_times": ["2014-02-01T00:00:00Z"]
         }"""
-    
+
     selectors_expected = []
     selector_base = selector.Selector()
     selector_base.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
@@ -166,90 +166,92 @@ class SelectorFileParserTest(unittest.TestCase):
 
   def testInvalidJson(self):
     selector_file_contents = """{
-   "file_format_version": 1,
+   "file_format_version": 1.1,
    "duration": "30d",
-   "metrics":"average_rtt",
-   "ip_translation":{
-     "strategy":"maxmind",
-     "params":{
-       "db_snapshots":["2014-08-04"]
+   "metrics": ["average_rtt"],
+   "ip_translation": {
+     "strategy": "maxmind",
+     "params": {
+       "db_snapshots": ["2014-08-04"]
      }
    },
-    "sites":"lga02",
-    "client_providers":"comcast",
-    "start_times":"2014-02-01T00:00:00Z"
+   "sites": ["lga02"],
+   "client_providers": ["comcast"],
+   "start_times": ["2014-02-01T00:00:00Z"]
 """
     # The final closing curly brace is missing, so this should fail
     self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
 
 
-class SelectorJsonEncoderTest(unittest.TestCase):
+class MultiSelectorJsonEncoderTest(unittest.TestCase):
+
+  def setUp(self):
+    # Disable maxDiff, as diffing JSON can generate large diffs.
+    self.maxDiff = None
 
   def assertJsonEqual(self, expected, actual):
     self.assertDictEqual(json.loads(expected), json.loads(actual))
 
-  def testEncodeSimpleSelectorA(self):
-    s = selector.Selector()
-    s.start_time = datetime.datetime(2015, 4, 2, 10, 27, 34)
+  def testEncodeMultiSelectorOneElement(self):
+    s = selector.MultiSelector()
+    s.start_times = [datetime.datetime(2015, 4, 2, 10, 27, 34)]
     s.duration = 45
-    s.site_name = 'mia01'
-    s.client_provider = 'twc'
-    s.metric = 'upload_throughput'
+    s.site_names = ['mia01']
+    s.client_providers = ['twc']
+    s.metrics = ['upload_throughput']
     s.ip_translation_spec = (iptranslation.IPTranslationStrategySpec(
         'maxmind', {'db_snapshots': ['2015-02-05']}))
 
     encoded_expected = """
 {
-  "file_format_version": 1.0,
+  "file_format_version": 1.1,
   "duration": "45d",
-  "metric":"upload_throughput",
-  "ip_translation":{
-    "strategy":"maxmind",
-    "params":{
-      "db_snapshots":["2015-02-05"]
+  "metrics": ["upload_throughput"],
+  "ip_translation": {
+    "strategy": "maxmind",
+    "params": {
+      "db_snapshots": ["2015-02-05"]
     }
   },
-  "subsets":[
-     {
-        "site":"mia01",
-        "client_provider":"twc",
-        "start_time":"2015-04-02T10:27:34Z"
-     }
-  ]
+  "sites": ["mia01"],
+  "client_providers": ["twc"],
+  "start_times": ["2015-04-02T10:27:34Z"]
 }"""
-    encoded_actual = selector.SelectorJsonEncoder().encode(s)
+    encoded_actual = selector.MultiSelectorJsonEncoder().encode(s)
     self.assertJsonEqual(encoded_expected, encoded_actual)
 
-  def testEncodeSimpleSelectorB(self):
-    s = selector.Selector()
-    s.start_time = datetime.datetime(2014, 2, 1)
-    s.duration = 22
-    s.site_name = 'lga02'
-    s.client_provider = 'comcast'
-    s.metric = 'download_throughput'
+  def testEncodeMultiSelectorMultiElement(self):
+    s = selector.MultiSelector()
+    s.start_times = [
+        datetime.datetime(2015, 4, 1, 0, 0, 0),
+        datetime.datetime(2015, 4, 8, 0, 0, 0),
+        datetime.datetime(2015, 4, 15, 0, 0, 0),
+        ]
+    s.duration = 7
+    s.site_names = ['iad01', 'lga06', 'mia01', 'nuq03']
+    s.client_providers = ['comcast', 'twc', 'verizon']
+    s.metrics = ['download_throughput', 'upload_throughput', 'minimum_rtt']
     s.ip_translation_spec = (iptranslation.IPTranslationStrategySpec(
-        'maxmind', {'db_snapshots': ['2014-08-04']}))
+        'maxmind', {'db_snapshots': ['2015-02-05']}))
 
     encoded_expected = """
 {
-  "file_format_version": 1.0,
-  "duration": "22d",
-  "metric":"download_throughput",
-  "ip_translation":{
-    "strategy":"maxmind",
-    "params":{
-      "db_snapshots":["2014-08-04"]
+  "file_format_version": 1.1,
+  "duration": "7d",
+  "metrics": ["download_throughput", "upload_throughput", "minimum_rtt"],
+  "ip_translation": {
+    "strategy": "maxmind",
+    "params": {
+      "db_snapshots": ["2015-02-05"]
     }
   },
-  "subsets":[
-     {
-        "site":"lga02",
-        "client_provider":"comcast",
-        "start_time":"2014-02-01T00:00:00Z"
-     }
-  ]
+  "sites": ["iad01", "lga06", "mia01", "nuq03"],
+  "client_providers": ["comcast", "twc", "verizon"],
+  "start_times": ["2015-04-01T00:00:00Z",
+                  "2015-04-08T00:00:00Z",
+                  "2015-04-15T00:00:00Z"]
 }"""
-    encoded_actual = selector.SelectorJsonEncoder().encode(s)
+    encoded_actual = selector.MultiSelectorJsonEncoder().encode(s)
     self.assertJsonEqual(encoded_expected, encoded_actual)
 
 
