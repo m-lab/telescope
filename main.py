@@ -176,7 +176,8 @@ def write_metric_calculations_to_file(data_filepath, metric_calculations, should
   return False
 
 
-def build_filename(resource_type, outpath, date, duration, site, client_provider, metric):
+def build_filename(resource_type, outpath, date, duration, site,
+                    client_provider, client_country, metric):
   """ Builds an output filename that reflects the data being written to file.
 
       Args:
@@ -197,7 +198,10 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
 
         client_provider (str): The name of the client provider associated with
         the test results.
-
+        
+        client_country (str): The name of the client country associated with
+        the test results.
+        
         metric (str): The name of the metric this data represents (e.g.
         download_throughput).
 
@@ -205,18 +209,19 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
        (str): The generated full pathname of the output file.
   """
   extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql'}
-  filename_format = "{date}+{duration}_{site}_{client_provider}_{metric}-{extension}"
-
+  filename_format = "{date}+{duration}_{location_properties}_{metric}-{extension}"
+  
+  location_properties = "_".join(filter(None, [site, client_country,
+                                                client_provider]))
+  
   filename = filename_format.format(date = date,
                                     duration = duration,
-                                    site = site,
-                                    client_provider = client_provider,
+                                    location_properties = location_properties,
                                     metric = metric,
                                     extension = extensions[resource_type])
   filename = telescope.utils.strip_special_chars(filename)
   filepath = os.path.join(outpath, filename)
   return filepath
-
 
 def write_bigquery_to_file(bigquery_filepath, query_string):
   """ Writes BigQuery query string to a file.
@@ -298,27 +303,33 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
   start_time_datetime = selector.start_time
   end_time_datetime = start_time_datetime + datetime.timedelta(seconds = selector.duration)
 
-  network_lookup_found_blocks = ip_translator.find_ip_blocks(
-      selector.client_provider)
-  if len(network_lookup_found_blocks) == 0:
-    raise NoClientNetworkBlocksFound(selector.client_provider)
-
-  server_ips = []
-  try:
-    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site,
-                                                             mlab_project = selector.mlab_project):
-      server_ips.append(retrieved_site_ip)
-      logger.debug("Found IP for {site} of {site_ip} on test {test}.".format(
-          site=selector.site, site_ip = retrieved_site_ip, test = selector.mlab_project))
-  except Exception as caught_error:
-    raise MLabServerResolutionFailed(caught_error)
-
+  if selector.client_provider != None:
+    client_ips = ip_translator.find_ip_blocks(selector.client_provider)
+    if len(client_ips) == 0:
+        raise NoClientNetworkBlocksFound(selector.client_provider)
+  else:
+    client_ips = None
+  
+  if selector.site != None:
+      server_ips = []
+      try:
+        for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site,
+                                                                 mlab_project = selector.mlab_project):
+          server_ips.append(retrieved_site_ip)
+          logger.debug("Found IP for {site} of {site_ip} on test {test}.".format(
+              site=selector.site, site_ip = retrieved_site_ip, test = selector.mlab_project))
+      except Exception as caught_error:
+        raise MLabServerResolutionFailed(caught_error)
+  else:
+    server_ips = None
+  
   query_generator = telescope.query.BigQueryQueryGenerator(start_time_datetime,
                                                      end_time_datetime,
                                                      selector.metric,
                                                      selector.mlab_project,
-                                                     server_ips,
-                                                     network_lookup_found_blocks)
+                                                     server_ips = server_ips,
+                                                     client_ips = client_ips,
+                                                     client_country = selector.client_country)
   return (query_generator.query(), query_generator.table_span())
 
 def duration_to_string(duration_seconds):
@@ -479,8 +490,8 @@ def main(args):
                       'duration': duration_to_string(selector.duration),
                       'site': selector.site,
                       'client_provider': selector.client_provider,
-                      'metric': selector.metric,
-                      'mlab_project': selector.mlab_project,
+                      'client_country': selector.client_country,
+                      'metric': selector.metric
                     }
     thread_metadata['data_filepath'] = build_filename('data',
                                                       args.output,
@@ -488,16 +499,17 @@ def main(args):
                                                       thread_metadata['duration'],
                                                       thread_metadata['site'],
                                                       thread_metadata['client_provider'],
+                                                      thread_metadata['client_country'],
                                                       thread_metadata['metric'])
     if (args.ignorecache is False and
         telescope.utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
       logger.info(('Raw data file found ({data_filepath}), assuming this is cached copy of same data and ' +
                    'moving off. Use --ignorecache to suppress this behavior.').format(**thread_metadata))
       continue
-
+  
+    identifier_string = ', '.join(filter(None, thread_metadata.values()))
     logger.debug('Did not find existing data file: {data_filepath}'.format(**thread_metadata))
-    logger.debug(('Generating Query for subset of {site}, {client_provider}, {date}, ' +
-                  '{duration}.').format(**thread_metadata))
+    logger.debug(('Generating Query for subset of {0}').format(identifier_string))
 
     selector.ip_translation_spec.params['maxmind_dir'] = args.maxminddir
 
@@ -514,12 +526,13 @@ def main(args):
 
     if args.savequery == True:
       bigquery_filepath = build_filename('bigquery',
-                                         args.output,
-                                         thread_metadata['date'],
-                                         thread_metadata['duration'],
-                                         thread_metadata['site'],
-                                         thread_metadata['client_provider'],
-                                         thread_metadata['metric'])
+                                            args.output,
+                                            thread_metadata['date'],
+                                            thread_metadata['duration'],
+                                            thread_metadata['site'],
+                                            thread_metadata['client_provider'],
+                                            thread_metadata['client_country'],
+                                            thread_metadata['metric'])
       write_bigquery_to_file(bigquery_filepath, bq_query_string)
     if args.dryrun is False:
       """ Offer Queue a tuple of the BQ statement, BQ table span, metadata,
@@ -553,14 +566,13 @@ def main(args):
 
         for (existing_thread, external_query_handler) in thread_monitor:
           existing_thread.join()
+          identifier_string = ', '.join(filter(None, thread_metadata.values()))
           if external_query_handler.result != True and external_query_handler.fatal_error != True:
             selector_queue.put( external_query_handler.queue_set )
           elif external_query_handler.result != True and external_query_handler.fatal_error == True:
-            logger.debug(('Fatal error on {site}, {client_provider}, {date}, ' +
-                '{duration}, moving along.').format(**thread_metadata))
+            logger.debug(('Fatal error on {0}, moving along.').format(identifier_string))
           else:
-            logger.debug(('Successfully retrieved {site}, {client_provider}, {date}, ' +
-                          '{duration}.').format(**thread_metadata))
+            logger.debug(('Successfully retrieved {0}.').format(identifier_string))
 
   except KeyboardInterrupt:
     logger.error("Caught Interruption, Shutting Down Now.")
