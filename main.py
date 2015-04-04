@@ -64,6 +64,7 @@ class ExternalQueryHandler:
     self.result = False
     self.metadata = None
     self.fatal_error = None
+    self.data_filepath = None
 
   def retrieve_data_upon_job_completion(self, job_id, query_object = None):
     """ Waits for a BigQuery job to complete, then retrieves the data, runs
@@ -99,7 +100,7 @@ class ExternalQueryHandler:
         subset_metric_calculations = telescope.metrics_math.calculate_results_list(
             self.metadata['metric'], validation_results)
 
-        write_metric_calculations_to_file(self.metadata['data_filepath'], subset_metric_calculations)
+        write_metric_calculations_to_file(self.data_filepath, subset_metric_calculations)
         self.result = True
       except (ValueError, telescope.external.QueryFailure) as caught_error:
         logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
@@ -418,7 +419,7 @@ def process_selector_queue(selector_queue, google_auth_config,
   thread_monitor = []
 
   while not selector_queue.empty():
-    bq_query_string, bq_table_span, thread_metadata, has_been_run = selector_queue.get(False)
+    bq_query_string, bq_table_span, thread_metadata, data_filepath, has_been_run = selector_queue.get(False)
 
     """
       Enforce concurrent rate limit and allow fine-grain controls over batch
@@ -444,19 +445,20 @@ def process_selector_queue(selector_queue, google_auth_config,
     except (SSLError, telescope.external.QueryFailure) as caught_error:
       logger.warn(("Caught request error {caught_error} on query, cooling " +
                     "down for a minute.").format(caught_error = caught_error))
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
+      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, data_filepath, True) )
       time.sleep(60)
       bq_job_id = None
 
     if bq_job_id is None:
       logger.warn(("No job id returned for {site} of {metric} (concurrent threads: " +
                     "{thread_count}).").format(thread_count = threading.activeCount(), **thread_metadata))
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
+      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, data_filepath, True) )
       continue
 
     external_query_handler = ExternalQueryHandler()
-    external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, True)
+    external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, data_filepath, True)
     external_query_handler.metadata = thread_metadata
+    external_query_handler.data_filepath = data_filepath
     new_thread = threading.Thread(target=bq_query_call.monitor_query_queue,
                                     args = (bq_job_id, thread_metadata, None,
                                             external_query_handler.retrieve_data_upon_job_completion))
@@ -493,22 +495,22 @@ def main(args):
                       'client_country': selector.client_country,
                       'metric': selector.metric
                     }
-    thread_metadata['data_filepath'] = build_filename('data',
-                                                      args.output,
-                                                      thread_metadata['date'],
-                                                      thread_metadata['duration'],
-                                                      thread_metadata['site'],
-                                                      thread_metadata['client_provider'],
-                                                      thread_metadata['client_country'],
-                                                      thread_metadata['metric'])
+    data_filepath = build_filename('data',
+                                      args.output,
+                                      thread_metadata['date'],
+                                      thread_metadata['duration'],
+                                      thread_metadata['site'],
+                                      thread_metadata['client_provider'],
+                                      thread_metadata['client_country'],
+                                      thread_metadata['metric'])
     if (args.ignorecache is False and
-        telescope.utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
-      logger.info(('Raw data file found ({data_filepath}), assuming this is cached copy of same data and ' +
-                   'moving off. Use --ignorecache to suppress this behavior.').format(**thread_metadata))
+        telescope.utils.check_for_valid_cache(data_filepath) is True):
+      logger.info(('Raw data file found ({0}), assuming this is cached copy of same data and ' +
+                   'moving off. Use --ignorecache to suppress this behavior.').format(data_filepath))
       continue
   
     identifier_string = ', '.join(filter(None, thread_metadata.values()))
-    logger.debug('Did not find existing data file: {data_filepath}'.format(**thread_metadata))
+    logger.debug('Did not find existing data file: {0}'.format(data_filepath))
     logger.debug(('Generating Query for subset of {0}').format(identifier_string))
 
     selector.ip_translation_spec.params['maxmind_dir'] = args.maxminddir
@@ -540,7 +542,7 @@ def main(args):
           run the query thus far (failed queries are pushed back to the end
           of the loop).
       """
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, False) )
+      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, data_filepath, False) )
     else:
       logger.warn('Dry run flag caught, built query and reached the point that it would be posted, ' +
                   'moving on.')
