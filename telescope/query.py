@@ -29,7 +29,7 @@ class BigQueryQueryGenerator(object):
   table_format = '[{database_name}:m_lab.{table_date}.all]'
 
   def __init__(self, start_time, end_time, metric, project,
-                server_country = None, client_ips = None,
+                server_ips = None, client_ips = None,
                 client_country = None):
     self.logger = logging.getLogger('telescope')
     self._select_list = self._build_select_list(metric)
@@ -43,9 +43,9 @@ class BigQueryQueryGenerator(object):
         self._add_client_ips_conditional(client_ips, is_web100)
     if client_country != None:
         self._add_client_country_conditional(client_country)
-    if server_country != None:
-        self._add_server_country_conditional(server_country)
-
+    if server_ips != None:
+        self._add_server_ips_conditional(server_ips, is_web100)
+    
     self._query = self._create_query_string(project)
 
   def query(self):
