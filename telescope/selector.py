@@ -85,24 +85,36 @@ class MultiSelector(object):
     self.duration = None
     self.metrics = None
     self.ip_translation_spec = None
-    self.client_providers = None
-    self.sites = None
+    self.client_providers = [None]
+    self.client_countries = [None]
+    self.sites = [None]
 
   def split(self):
     """Splits a MultiSelector into an equivalent list of Selectors."""
     selectors = []
-    selector_product = itertools.product(
-        self.start_times, self.client_providers, self.sites, self.metrics)
-    for start_time, client_provider, site, metric in selector_product:
+    selector_product = itertools.product(self.start_times,
+        self.client_providers, self.client_countries, self.sites, self.metrics)
+    for start_time, client_provider, client_country, site, \
+            metric in selector_product:
         selector = Selector()
         selector.ip_translation_spec = self.ip_translation_spec
         selector.duration = self.duration
         selector.start_time = start_time
-        selector.client_provider = client_provider
-        selector.site = site
         selector.metric = metric
         selector.mlab_project = _metric_to_project[metric]
         selectors.append(selector)
+
+        selector.client_provider = client_provider
+        selector.client_country = client_country
+        selector.site = site
+        
+        if selector.client_provider != None:
+            selector.client_provider = selector.client_provider.lower()
+        if selector.client_country != None:
+            selector.client_country = selector.client_country.lower()
+        if selector.site != None:
+            selector.site = selector.site.lower()
+    
     return selectors
 
 
@@ -156,13 +168,18 @@ class SelectorFileParser(object):
     multi_selector = MultiSelector()
     multi_selector.start_times = self._parse_start_times(
         selector_json['start_times'])
-    multi_selector.client_providers = selector_json['client_providers']
-    multi_selector.sites = selector_json['sites']
     multi_selector.metrics = selector_json['metrics']
     multi_selector.duration = self._parse_duration(selector_json['duration'])
     multi_selector.ip_translation_spec = self._parse_ip_translation(
         selector_json['ip_translation'])
-
+    
+    if selector_json.has_key('client_providers'):
+        multi_selector.client_providers = selector_json['client_providers']
+    if selector_json.has_key('client_countries'):
+        multi_selector.client_countries = selector_json['client_countries']
+    if selector_json.has_key('sites'):
+        multi_selector.sites = selector_json['sites']
+    
     return multi_selector.split()
 
   def _parse_start_times(self, start_times_raw):
