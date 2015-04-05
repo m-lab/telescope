@@ -40,8 +40,18 @@ class SelectorFileParserTest(unittest.TestCase):
     self.assertEqual(selector_expected.ip_translation_spec.strategy_name,
                      selector_actual.ip_translation_spec.strategy_name)
     self.assertDictEqual(selector_expected.ip_translation_spec.params, selector_actual.ip_translation_spec.params)
-    self.assertEqual(selector_expected.site, selector_actual.site)
-    self.assertEqual(selector_expected.client_provider, selector_actual.client_provider)
+
+    if hasattr(selector_expected, 'site') or \
+            selector_actual.site != None:
+        self.assertEqual(selector_expected.site, selector_actual.site)
+
+    if hasattr(selector_expected, 'client_provider') or \
+            selector_actual.client_provider != None:
+        self.assertEqual(selector_expected.client_provider, selector_actual.client_provider)
+    
+    if hasattr(selector_expected, 'client_country') or \
+            selector_actual.client_country != None:
+        self.assertEqual(selector_expected.client_country, selector_actual.client_country)
 
   def assertParsedSelectorsMatch(self, selectors_expected, selector_file_contents):
     selectors_actual = self.parse_file_contents(selector_file_contents)
@@ -115,6 +125,7 @@ class SelectorFileParserTest(unittest.TestCase):
             },
             "sites": ["lga02"],
             "client_providers": ["comcast"],
+            "client_countries": ["us"],
             "start_times": ["2014-02-01T00:00:00Z"]
         }"""
     selector_expected = selector.Selector()
@@ -126,6 +137,7 @@ class SelectorFileParserTest(unittest.TestCase):
                                                  {'db_snapshots': ['2014-08-04']}))
     selector_expected.site = 'lga02'
     selector_expected.client_provider = 'comcast'
+    selector_expected.client_country = 'us'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
   def testValidInput_v1dot1_Complex(self):
