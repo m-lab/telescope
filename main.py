@@ -46,7 +46,8 @@ MAX_THREADS_BATCH_MODE = 100
 class NoClientNetworkBlocksFound(Exception):
   def __init__(self, provider_name):
     Exception.__init__(self,
-                       'Could not find IP blocks associated with client provider {client_provider}.'.format(
+                       ('Could not find IP blocks associated with client ' +
+                       'provider {client_provider}.').format(
                            client_provider = provider_name))
 
 class MLabServerResolutionFailed(Exception):
@@ -103,13 +104,11 @@ class ExternalQueryHandler:
         write_metric_calculations_to_file(self.data_filepath, subset_metric_calculations)
         self.result = True
       except (ValueError, telescope.external.QueryFailure) as caught_error:
-        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
-            caught_error = caught_error, site = self.metadata['site'],
-            client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
+        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}, {date}).".format(
+            caught_error = caught_error, **self.metadata))
       except telescope.external.TableDoesNotExist:
         logger.error(("Requested tables for ({site}, {client_provider}, " +
-                      "{metric}) do not exist, moving on.").format( site = self.metadata['site'],
-                          client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
+                      "{metric}, {date}) do not exist, moving on.").format( **self.metadata ))
         self.fatal_error = True
     return self.result
 
@@ -505,8 +504,9 @@ def main(args):
                                       thread_metadata['metric'])
     if (args.ignorecache is False and
         telescope.utils.check_for_valid_cache(data_filepath) is True):
-      logger.info(('Raw data file found ({0}), assuming this is cached copy of same data and ' +
-                   'moving off. Use --ignorecache to suppress this behavior.').format(data_filepath))
+      logger.info(('Raw data file found ({0}), assuming this is cached copy ' +
+                    'of same data and moving off. Use --ignorecache to ' +
+                    'suppress this behavior.').format(data_filepath))
       continue
   
     identifier_string = ', '.join(filter(None, thread_metadata.values()))
@@ -542,17 +542,18 @@ def main(args):
           run the query thus far (failed queries are pushed back to the end
           of the loop).
       """
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, data_filepath, False) )
+      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, \
+                            data_filepath, False) )
     else:
-      logger.warn('Dry run flag caught, built query and reached the point that it would be posted, ' +
-                  'moving on.')
+      logger.warn('Dry run flag caught, built query and reached the point ' +
+                    'that it would be posted, moving on.')
   try:
     if args.dryrun is False:
       logger.info(("Finished processing selector files, approximately {0} queries " +
                     "to be performed.").format(selector_queue.qsize()))
       if os.path.exists(args.credentials_filepath) is False:
-        logger.warn('No credentials for Google appear to exist, next step will be an authentication ' +
-                    'mechanism for its API.')
+        logger.warn('No credentials for Google appear to exist, next step ' +
+                      'will be an authentication mechanism for its API.')
 
       try:
         google_auth_config = telescope.external.GoogleAPIAuth(
@@ -569,9 +570,11 @@ def main(args):
         for (existing_thread, external_query_handler) in thread_monitor:
           existing_thread.join()
           identifier_string = ', '.join(filter(None, thread_metadata.values()))
-          if external_query_handler.result != True and external_query_handler.fatal_error != True:
+          if external_query_handler.result != True and \
+                external_query_handler.fatal_error != True:
             selector_queue.put( external_query_handler.queue_set )
-          elif external_query_handler.result != True and external_query_handler.fatal_error == True:
+          elif external_query_handler.result != True and \
+                external_query_handler.fatal_error == True:
             logger.debug(('Fatal error on {0}, moving along.').format(identifier_string))
           else:
             logger.debug(('Successfully retrieved {0}.').format(identifier_string))
