@@ -286,6 +286,15 @@ class SelectorFileValidator(object):
         if not selector_dict.has_key('duration'):
             raise ValueError('UnsupportedDuration')
 
+        if selector_dict.has_key('client_countries'):
+            for client_country in selector_dict['client_countries']:
+                if len(client_country) != 2:
+                    raise ValueError('Requires ISO alpha-2 country code.')
+        if not selector_dict.has_key('client_countries') and \
+                not selector_dict.has_key('client_providers'):
+            raise ValueError('Requires at least a client_countries or ' +
+                                'client_providers property.')
+
         if not selector_dict.has_key('metrics') or \
             type(selector_dict['metrics']) != list:
                 raise ValueError('MetricsRequiresList')
@@ -318,6 +327,7 @@ class MultiSelectorJsonEncoder(json.JSONEncoder):
         'ip_translation': self._encode_ip_translation(
             selector.ip_translation_spec),
         'sites': selector.site_names,
+        'client_countries': selector.client_countries,
         'client_providers': selector.client_providers,
         'start_times': self._encode_start_times(selector.start_times)
         }
