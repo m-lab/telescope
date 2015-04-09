@@ -46,8 +46,8 @@ MAX_THREADS_BATCH_MODE = 100
 class NoClientNetworkBlocksFound(Exception):
   def __init__(self, provider_name):
     Exception.__init__(self,
-                       'Could not find IP blocks associated with client provider {client_provider}.'.format(
-                           client_provider = provider_name))
+        ('Could not find IP blocks associated with client provider '+
+        '{client_provider}.').format(client_provider = provider_name))
 
 class MLabServerResolutionFailed(Exception):
   def __init__(self, inner_exception):
@@ -64,6 +64,7 @@ class ExternalQueryHandler:
     self.result = False
     self.metadata = None
     self.fatal_error = None
+    self.data_filepath = None
 
   def retrieve_data_upon_job_completion(self, job_id, query_object = None):
     """ Waits for a BigQuery job to complete, then retrieves the data, runs
@@ -99,16 +100,14 @@ class ExternalQueryHandler:
         subset_metric_calculations = telescope.metrics_math.calculate_results_list(
             self.metadata['metric'], validation_results)
 
-        write_metric_calculations_to_file(self.metadata['data_filepath'], subset_metric_calculations)
+        write_metric_calculations_to_file(self.data_filepath, subset_metric_calculations)
         self.result = True
       except (ValueError, telescope.external.QueryFailure) as caught_error:
-        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
-            caught_error = caught_error, site = self.metadata['site'],
-            client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
+        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}, {date}).".format(
+            caught_error = caught_error, **self.metadata))
       except telescope.external.TableDoesNotExist:
         logger.error(("Requested tables for ({site}, {client_provider}, " +
-                      "{metric}) do not exist, moving on.").format( site = self.metadata['site'],
-                          client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
+                      "{metric}, {date}) do not exist, moving on.").format( **self.metadata ))
         self.fatal_error = True
     return self.result
 
@@ -176,7 +175,8 @@ def write_metric_calculations_to_file(data_filepath, metric_calculations, should
   return False
 
 
-def build_filename(resource_type, outpath, date, duration, site, client_provider, metric):
+def build_filename(resource_type, outpath, date, duration, site,
+                    client_provider, client_country, metric):
   """ Builds an output filename that reflects the data being written to file.
 
       Args:
@@ -197,7 +197,10 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
 
         client_provider (str): The name of the client provider associated with
         the test results.
-
+        
+        client_country (str): The name of the client country associated with
+        the test results.
+        
         metric (str): The name of the metric this data represents (e.g.
         download_throughput).
 
@@ -205,18 +208,19 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
        (str): The generated full pathname of the output file.
   """
   extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql'}
-  filename_format = "{date}+{duration}_{site}_{client_provider}_{metric}-{extension}"
-
+  filename_format = "{date}+{duration}_{location_properties}_{metric}-{extension}"
+  
+  location_properties = "_".join(filter(None, [site, client_country,
+                                                client_provider]))
+  
   filename = filename_format.format(date = date,
                                     duration = duration,
-                                    site = site,
-                                    client_provider = client_provider,
+                                    location_properties = location_properties,
                                     metric = metric,
                                     extension = extensions[resource_type])
   filename = telescope.utils.strip_special_chars(filename)
   filepath = os.path.join(outpath, filename)
   return filepath
-
 
 def write_bigquery_to_file(bigquery_filepath, query_string):
   """ Writes BigQuery query string to a file.
@@ -298,27 +302,33 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
   start_time_datetime = selector.start_time
   end_time_datetime = start_time_datetime + datetime.timedelta(seconds = selector.duration)
 
-  network_lookup_found_blocks = ip_translator.find_ip_blocks(
-      selector.client_provider)
-  if len(network_lookup_found_blocks) == 0:
-    raise NoClientNetworkBlocksFound(selector.client_provider)
-
-  server_ips = []
-  try:
-    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site,
-                                                             mlab_project = selector.mlab_project):
-      server_ips.append(retrieved_site_ip)
-      logger.debug("Found IP for {site} of {site_ip} on test {test}.".format(
-          site=selector.site, site_ip = retrieved_site_ip, test = selector.mlab_project))
-  except Exception as caught_error:
-    raise MLabServerResolutionFailed(caught_error)
-
+  if selector.client_provider != None:
+    client_ips = ip_translator.find_ip_blocks(selector.client_provider)
+    if len(client_ips) == 0:
+        raise NoClientNetworkBlocksFound(selector.client_provider)
+  else:
+    client_ips = None
+  
+  if selector.site != None:
+      server_ips = []
+      try:
+        for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site,
+                                                                 mlab_project = selector.mlab_project):
+          server_ips.append(retrieved_site_ip)
+          logger.debug("Found IP for {site} of {site_ip} on test {test}.".format(
+              site=selector.site, site_ip = retrieved_site_ip, test = selector.mlab_project))
+      except Exception as caught_error:
+        raise MLabServerResolutionFailed(caught_error)
+  else:
+    server_ips = None
+  
   query_generator = telescope.query.BigQueryQueryGenerator(start_time_datetime,
                                                      end_time_datetime,
                                                      selector.metric,
                                                      selector.mlab_project,
-                                                     server_ips,
-                                                     network_lookup_found_blocks)
+                                                     server_ips = server_ips,
+                                                     client_ips = client_ips,
+                                                     client_country = selector.client_country)
   return (query_generator.query(), query_generator.table_span())
 
 def duration_to_string(duration_seconds):
@@ -407,7 +417,7 @@ def process_selector_queue(selector_queue, google_auth_config,
   thread_monitor = []
 
   while not selector_queue.empty():
-    bq_query_string, bq_table_span, thread_metadata, has_been_run = selector_queue.get(False)
+    bq_query_string, bq_table_span, thread_metadata, data_filepath, has_been_run = selector_queue.get(False)
 
     """
       Enforce concurrent rate limit and allow fine-grain controls over batch
@@ -433,19 +443,20 @@ def process_selector_queue(selector_queue, google_auth_config,
     except (SSLError, telescope.external.QueryFailure) as caught_error:
       logger.warn(("Caught request error {caught_error} on query, cooling " +
                     "down for a minute.").format(caught_error = caught_error))
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
+      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, data_filepath, True) )
       time.sleep(60)
       bq_job_id = None
 
     if bq_job_id is None:
       logger.warn(("No job id returned for {site} of {metric} (concurrent threads: " +
                     "{thread_count}).").format(thread_count = threading.activeCount(), **thread_metadata))
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
+      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, data_filepath, True) )
       continue
 
     external_query_handler = ExternalQueryHandler()
-    external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, True)
+    external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, data_filepath, True)
     external_query_handler.metadata = thread_metadata
+    external_query_handler.data_filepath = data_filepath
     new_thread = threading.Thread(target=bq_query_call.monitor_query_queue,
                                     args = (bq_job_id, thread_metadata, None,
                                             external_query_handler.retrieve_data_upon_job_completion))
@@ -479,25 +490,27 @@ def main(args):
                       'duration': duration_to_string(selector.duration),
                       'site': selector.site,
                       'client_provider': selector.client_provider,
-                      'metric': selector.metric,
-                      'mlab_project': selector.mlab_project,
+                      'client_country': selector.client_country,
+                      'metric': selector.metric
                     }
-    thread_metadata['data_filepath'] = build_filename('data',
-                                                      args.output,
-                                                      thread_metadata['date'],
-                                                      thread_metadata['duration'],
-                                                      thread_metadata['site'],
-                                                      thread_metadata['client_provider'],
-                                                      thread_metadata['metric'])
+    data_filepath = build_filename('data',
+                                      args.output,
+                                      thread_metadata['date'],
+                                      thread_metadata['duration'],
+                                      thread_metadata['site'],
+                                      thread_metadata['client_provider'],
+                                      thread_metadata['client_country'],
+                                      thread_metadata['metric'])
     if (args.ignorecache is False and
-        telescope.utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
-      logger.info(('Raw data file found ({data_filepath}), assuming this is cached copy of same data and ' +
-                   'moving off. Use --ignorecache to suppress this behavior.').format(**thread_metadata))
+        telescope.utils.check_for_valid_cache(data_filepath) is True):
+      logger.info(('Raw data file found ({0}), assuming this is cached copy ' +
+                    'of same data and moving off. Use --ignorecache to ' +
+                    'suppress this behavior.').format(data_filepath))
       continue
-
-    logger.debug('Did not find existing data file: {data_filepath}'.format(**thread_metadata))
-    logger.debug(('Generating Query for subset of {site}, {client_provider}, {date}, ' +
-                  '{duration}.').format(**thread_metadata))
+  
+    identifier_string = ', '.join(filter(None, thread_metadata.values()))
+    logger.debug('Did not find existing data file: {0}'.format(data_filepath))
+    logger.debug(('Generating Query for subset of {0}').format(identifier_string))
 
     selector.ip_translation_spec.params['maxmind_dir'] = args.maxminddir
 
@@ -514,12 +527,13 @@ def main(args):
 
     if args.savequery == True:
       bigquery_filepath = build_filename('bigquery',
-                                         args.output,
-                                         thread_metadata['date'],
-                                         thread_metadata['duration'],
-                                         thread_metadata['site'],
-                                         thread_metadata['client_provider'],
-                                         thread_metadata['metric'])
+                                            args.output,
+                                            thread_metadata['date'],
+                                            thread_metadata['duration'],
+                                            thread_metadata['site'],
+                                            thread_metadata['client_provider'],
+                                            thread_metadata['client_country'],
+                                            thread_metadata['metric'])
       write_bigquery_to_file(bigquery_filepath, bq_query_string)
     if args.dryrun is False:
       """ Offer Queue a tuple of the BQ statement, BQ table span, metadata,
@@ -527,17 +541,18 @@ def main(args):
           run the query thus far (failed queries are pushed back to the end
           of the loop).
       """
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, False) )
+      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, \
+                            data_filepath, False) )
     else:
-      logger.warn('Dry run flag caught, built query and reached the point that it would be posted, ' +
-                  'moving on.')
+      logger.warn('Dry run flag caught, built query and reached the point ' +
+                    'that it would be posted, moving on.')
   try:
     if args.dryrun is False:
       logger.info(("Finished processing selector files, approximately {0} queries " +
                     "to be performed.").format(selector_queue.qsize()))
       if os.path.exists(args.credentials_filepath) is False:
-        logger.warn('No credentials for Google appear to exist, next step will be an authentication ' +
-                    'mechanism for its API.')
+        logger.warn('No credentials for Google appear to exist, next step ' +
+                      'will be an authentication mechanism for its API.')
 
       try:
         google_auth_config = telescope.external.GoogleAPIAuth(
@@ -553,14 +568,15 @@ def main(args):
 
         for (existing_thread, external_query_handler) in thread_monitor:
           existing_thread.join()
-          if external_query_handler.result != True and external_query_handler.fatal_error != True:
+          identifier_string = ', '.join(filter(None, thread_metadata.values()))
+          if external_query_handler.result != True and \
+                external_query_handler.fatal_error != True:
             selector_queue.put( external_query_handler.queue_set )
-          elif external_query_handler.result != True and external_query_handler.fatal_error == True:
-            logger.debug(('Fatal error on {site}, {client_provider}, {date}, ' +
-                '{duration}, moving along.').format(**thread_metadata))
+          elif external_query_handler.result != True and \
+                external_query_handler.fatal_error == True:
+            logger.debug(('Fatal error on {0}, moving along.').format(identifier_string))
           else:
-            logger.debug(('Successfully retrieved {site}, {client_provider}, {date}, ' +
-                          '{duration}.').format(**thread_metadata))
+            logger.debug(('Successfully retrieved {0}.').format(identifier_string))
 
   except KeyboardInterrupt:
     logger.error("Caught Interruption, Shutting Down Now.")
