@@ -46,9 +46,8 @@ MAX_THREADS_BATCH_MODE = 100
 class NoClientNetworkBlocksFound(Exception):
   def __init__(self, provider_name):
     Exception.__init__(self,
-                       ('Could not find IP blocks associated with client ' +
-                       'provider {client_provider}.').format(
-                           client_provider = provider_name))
+        ('Could not find IP blocks associated with client provider '+
+        '{client_provider}.').format(client_provider = provider_name))
 
 class MLabServerResolutionFailed(Exception):
   def __init__(self, inner_exception):

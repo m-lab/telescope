@@ -190,9 +190,6 @@ class BigQueryQueryGenerator(object):
     if self._conditional_dict.has_key('client_country'):
         conditional_list_string += "\n\tAND ({conditional})".format(
             conditional = self._conditional_dict['client_country'])
-    if self._conditional_dict.has_key('server_country'):
-        conditional_list_string += "\n\tAND ({conditional})".format(
-            conditional = self._conditional_dict['server_country'])
 
     built_query_string = built_query_format.format(
         select_list=select_list_string,
@@ -278,11 +275,6 @@ class BigQueryQueryGenerator(object):
 
   def _add_client_country_conditional(self, client_country):
     self._conditional_dict['client_country'] = ("{fieldname} = " +
-        "UPPER('{client_country}')").format(fieldname =
+        "'{client_country}'").format(fieldname =
         "connection_spec.client_geolocation.country_code",
-        client_country = client_country)
-  def _add_server_country_conditional(self, server_country):
-    self._conditional_dict['server_country'] = ("{fieldname} = " +
-        "UPPER('{server_country}')").format(fieldname =
-        "connection_spec.server_geolocation.country_code",
-        server_country = server_country)
+        client_country = client_country.upper())
