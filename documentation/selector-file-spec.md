@@ -47,7 +47,7 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 
 `start_times`: List of start times of the window in which to collect test results (in ISO 8601 format). This value must end in `Z` (i.e. only UTC time zone is supported).
 
-`sites` _(optional)_: List of M-Lab site anames where data was collected.
+`sites` _(optional)_: List of M-Lab site names where data was collected.
 
 `client_providers` _(optional)_: List of client providers based on their name. This is the substring that should appear in all AS names when a mapping is performed from this parameter to corresponding ASes. For example, "Verizon" should match AS names "Verizon Online LLC", "MCI Communications Services, Inc. d/b/a Verizon Business", "Verizon Data Services LLC", etc. Supports a limited number of provider metanames that translate to all known AS name queries for that provider:
 
