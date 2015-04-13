@@ -305,18 +305,16 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
 
   server_ips = []
   try:
-    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site,
-                                                             mlab_project = selector.mlab_project):
+    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site):
       server_ips.append(retrieved_site_ip)
-      logger.debug("Found IP for {site} of {site_ip} on test {test}.".format(
-          site=selector.site, site_ip = retrieved_site_ip, test = selector.mlab_project))
+      logger.debug('Found IP for {site} of {site_ip}.'.format(
+          site=selector.site, site_ip=retrieved_site_ip))
   except Exception as caught_error:
     raise MLabServerResolutionFailed(caught_error)
 
   query_generator = telescope.query.BigQueryQueryGenerator(start_time_datetime,
                                                      end_time_datetime,
                                                      selector.metric,
-                                                     selector.mlab_project,
                                                      server_ips,
                                                      network_lookup_found_blocks)
   return (query_generator.query(), query_generator.table_span())
@@ -480,7 +478,6 @@ def main(args):
                       'site': selector.site,
                       'client_provider': selector.client_provider,
                       'metric': selector.metric,
-                      'mlab_project': selector.mlab_project,
                     }
     thread_metadata['data_filepath'] = build_filename('data',
                                                       args.output,
