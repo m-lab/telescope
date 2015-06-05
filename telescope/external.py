@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import httplib2
 import logging
 import datetime
@@ -33,18 +32,44 @@ from oauth2client.tools import run_flow
 
 from httplib import ResponseNotReady
 
-class QueryFailure(Exception):
-  def __init__(self, http_code, caught_error):
+
+class BigQueryJobFailure(Exception):
+  """Indicates that a BigQuery job's result was retrieved, but the query failed.
+
+  Raised when BigQuery reports a job has failed. Additional attempts to retrieve
+  the job status will not change the result.
+  """
+  def __init__(self, http_code, cause):
     self.code = http_code
-    Exception.__init__(self, caught_error)
+    Exception.__init__(self, cause)
+
+
+class BigQueryCommunicationError(Exception):
+  """An error occurred trying to communicate with BigQuery
+
+  This error is raised when the application fails to communicate with BigQuery.
+  It does not indicate that the result of the query itself failed, but rather
+  that the result of the query is indeterminate because the application failed
+  to retrieve status from BigQuery.
+  """
+
+  def __init__(self, message, cause):
+    self.cause = cause
+    super(BigQueryCommunicationError, self).__init__(
+        '%s (%s)' % (message, self.cause))
+
 
 class TableDoesNotExist(Exception):
+
   def __init__(self):
     Exception.__init__(self)
 
+
 class APIConfigError(Exception):
+
   def __init__(self):
     Exception.__init__(self)
+
 
 class GoogleAPIAuthConfig:
   """ Google API requires an object with preferences for logging and
@@ -57,6 +82,7 @@ class GoogleAPIAuthConfig:
   noauth_local_webserver = False
   auth_host_port = [8080, 8090]
   auth_host_name = 'localhost'
+
 
 class GoogleAPIAuth:
 
@@ -98,76 +124,169 @@ class GoogleAPIAuth:
 
     return project_numeric_id
 
+
+class BigQueryJobResultCollector(object):
+  """Collect the results from a BigQuery job."""
+
+  def __init__(self, jobs_service, project_id):
+    """Class to collect the results from a BigQuery job when the job completes.
+
+    Args:
+      jobs_service: BigQuery jobs service instance.
+      project_id: (int) ID of project for which to retrieve results.
+    """
+    self.logger = logging.getLogger('telescope')
+    self._jobs_service = jobs_service
+    self._project_id = project_id
+
+  def collect_results(self, job_id):
+    """Wait until a job is complete and gather all results.
+
+    Args:
+      job_id: (int) Job ID for which to retrieve results.
+
+    Returns:
+      (list) A list of result rows from the completed BigQuery job.
+    """
+    collected_rows = []
+    is_first_chunk = True
+    page_token = None
+
+    while is_first_chunk or page_token:
+      results_response = self._wait_for_results_chunk(job_id, page_token)
+      results_chunk, page_token = self._parse_query_results_response(
+          results_response)
+      collected_rows.extend(results_chunk)
+      if page_token:
+        self.logger.debug(('Query contains additional results (found %d rows so'
+                           ' far). Fetching additional rows with new page '
+                           'token.'), len(collected_rows))
+      is_first_chunk = False
+
+    return collected_rows
+
+  def _wait_for_results_chunk(self, job_id, page_token):
+    """Retrieve a single chunk of results from a completed BigQuery job.
+
+    Retrieve a fixed number of BigQuery result rows, where the number requested
+    may be greater or less than the total number of rows available.
+
+    Args:
+      job_id: (int) Job ID for which to retrieve results.
+      page_token: Token that indicates which page of results for which to
+        retrieve results or None to retrieve the first page of results.
+
+    Returns:
+      (list) A list of result rows in the current chunk of results.
+    """
+    MAX_RESULTS_PER_GET = 100000
+    query_request = {'projectId': self._project_id,
+                     'jobId': job_id,
+                     'maxResults': MAX_RESULTS_PER_GET,
+                     'timeoutMs': 0}
+    if page_token is not None:
+      query_request['pageToken'] = page_token
+
+    retries_remaining = 4
+    while True:
+      try:
+        return self._execute_job_query(query_request)
+      except BigQueryCommunicationError as e:
+        if retries_remaining > 0:
+          sleep_seconds = 10
+          logging.warning(('Failed to communicate with BigQuery to retrieve '
+                           'job %d. Retrying in %d seconds... (%d attempts '
+                           'remaining)'),
+                          job_id, sleep_seconds, retries_remaining)
+          time.sleep(sleep_seconds)
+          retries_remaining -= 1
+          continue
+        else:
+          raise e
+
+  def _execute_job_query(self, bq_query):
+    """Executes a query to retrieve BigQuery query results.
+
+    Args:
+      bq_query: (dict) Parameter set of the query to execute.
+
+    Returns:
+      (dict) The result of the query in the form of a dictionary.
+
+    Raises:
+      TableDoesNotExist: Query specified a table that does not exist.
+      BigQueryJobFailure: The job completed, but the query failed.
+      BigQueryCommunicationError: Could not communicate with BigQuery.
+    """
+    try:
+      return self._jobs_service.getQueryResults(**bq_query).execute()
+    except HttpError as e:
+      if e.resp.status == 404:
+        raise TableDoesNotExist()
+      elif e.resp.status == 400:
+        raise BigQueryJobFailure(e.resp.status, e)
+      else:
+        raise BigQueryCommunicationError('Failed to communicate with BigQuery', e)
+    except Exception as e:
+      raise BigQueryCommunicationError('Failed to communicate with BigQuery', e)
+
+  def _parse_query_results_response(self, results_response):
+    """Parse the response dictionary from BigQuery.
+
+    Parse the response dictionary from BigQuery into result rows and a page
+    token.
+
+    Args:
+      results_response: A response dictionary from BigQuery representing the
+      results of a BigQuery query job.
+
+    Returns:
+      (list, token) A two-tuple where the first element is a list of result rows
+      in the format:
+
+        [{'fieldA': 'valueA1', 'fieldB': 'valueB1'}, # row 1
+         {'fieldA': 'valueA2', 'fieldB': 'valueB2'}] # row 2
+
+      and the second element is a page token indicating the next page of results
+      or None if there are no more results available.
+    """
+    parsed_rows = []
+    if int(results_response['totalRows']) == 0:
+      self.logger.warn('BigQuery query completed successfully, but result '
+                       'contained no rows.')
+      return parsed_rows, None
+
+    fields = [field['name'] for field in results_response['schema']['fields']]
+
+    for results_row in results_response['rows']:
+      parsed_row = dict(zip(
+          fields, [result_value['v'] for result_value in results_row['f']]))
+      parsed_rows.append(parsed_row)
+
+    if results_response.has_key('pageToken'):
+      page_token = results_response['pageToken']
+    else:
+      page_token = None
+
+    return parsed_rows, page_token
+
+
 class BigQueryCall:
 
   def __init__(self, google_auth_config):
-
     self.logger = logging.getLogger('telescope')
 
     try:
       self.authenticated_service = google_auth_config.authenticate_with_google()
       self.project_id = google_auth_config.project_id
-    except (SSLError, AttributeError, HttpError, httplib2.ServerNotFoundError, ResponseNotReady) as caught_error:
-      raise QueryFailure(None, caught_error)
+    except (SSLError, AttributeError, HttpError, httplib2.ServerNotFoundError,
+            ResponseNotReady) as e:
+      raise BigQueryCommunicationError(None, e)
 
-    return None
-
-  def retrieve_job_data(self, job_id, timeout = 0):
-    max_results_per_get = 100000
-    job_data_to_return = []
-    job_collection = self.authenticated_service.jobs()
-
-    query_request = {'projectId': self.project_id,
-                      'jobId': job_id,
-                      'maxResults':  max_results_per_get,
-                      'timeoutMs': timeout}
-
-    while True:
-      try:
-        query_results_response = job_collection.getQueryResults(**query_request).execute()
-
-        assert query_results_response['jobComplete'] == True, 'IncompleteBigQuery'
-
-        if int(query_results_response['totalRows']) == 0:
-          self.logger.warn('BigQuery Report Job Completed, but no rows found. This ' +
-                            'is likely due to no data being present for site, ' +
-                            'client and time combination. Believing that, I will ' +
-                            'produce an empty file. The life of measurement is ' +
-                            'solitary, poor, nasty, brutish, and short.')
-          break
-        else:
-          fieldnames = [field['name'] for field in query_results_response['schema']['fields']]
-
-          for results_row in query_results_response['rows']:
-            new_results_row = dict(zip(fieldnames, [result_value['v'] for result_value in results_row['f']]))
-            job_data_to_return.append(new_results_row)
-
-          if query_results_response.has_key('pageToken'):
-            query_request['pageToken'] = query_results_response['pageToken']
-            self.logger.debug("Large result, have found {count} iterating with new page token.".format(
-                count = len(job_data_to_return)))
-          else:
-            self.logger.debug("Complete, found {count}.".format(count = len(job_data_to_return)))
-            break
-      except (SSLError, HttpError, ResponseNotReady) as caught_error:
-        if caught_error.resp.status == 404:
-          raise TableDoesNotExist()
-        elif caught_error.resp.status in [403, 500, 503]:
-          raise QueryFailure(caught_error.resp.status, caught_error)
-        else:
-          self.logger.warn(('Encountered error ({caught_error}) retrieving ' +
-                            '{notification_identifier} results, could be temporary, ' +
-                            'not bailing out.').format(caught_error = caught_error,
-                                                      notification_identifier = job_id))
-        time.sleep(10)
-      except (Exception, AttributeError, httplib2.ServerNotFoundError) as caught_error:
-          self.logger.warn(('Encountered error ({caught_error}) retrieving ' +
-                            '{notification_identifier} results, could be temporary, ' +
-                            'not bailing out.').format(caught_error = caught_error,
-                                                      notification_identifier = job_id))
-
-          time.sleep(10)
-    return job_data_to_return
+  def retrieve_job_data(self, job_id):
+    result_collector = BigQueryJobResultCollector(
+        self.authenticated_service.jobs(), self.project_id)
+    return result_collector.collect_results(job_id)
 
   def run_asynchronous_query(self, query_string, batch_mode = False):
     job_reference_id = None
