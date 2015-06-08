@@ -73,11 +73,9 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
     self.addCleanup(sleep_patch.stop)
     sleep_patch.start()
 
-    self.dummy_job_id = 42
-    self.dummy_project_id = 57
     self.mock_jobs_service = mock.Mock()
     self.collector = external.BigQueryJobResultCollector(self.mock_jobs_service,
-                                                         self.dummy_project_id)
+                                                         'dummy_project_id')
 
   def test_single_page_multiple_rows(self):
     mock_result_rows = [
@@ -87,14 +85,14 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
     self.mock_jobs_service.getQueryResults().execute.return_value = (
         mock_response)
     rows_expected = mock_result_rows
-    rows_actual = self.collector.collect_results(self.dummy_job_id)
+    rows_actual = self.collector.collect_results('dummy_job_id')
     self.assertEqual(rows_expected, rows_actual)
 
   def test_single_page_no_rows(self):
     self.mock_jobs_service.getQueryResults().execute.return_value = {
         'totalRows': 0}
     rows_expected = []
-    rows_actual = self.collector.collect_results(self.dummy_job_id)
+    rows_actual = self.collector.collect_results('dummy_job_id')
     self.assertEqual(rows_expected, rows_actual)
 
   def test_multiple_pages(self):
@@ -114,7 +112,7 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
     rows_expected.extend(mock_result_rows1)
     rows_expected.extend(mock_result_rows2)
 
-    rows_actual = self.collector.collect_results(self.dummy_job_id)
+    rows_actual = self.collector.collect_results('dummy_job_id')
     self.assertEqual(rows_expected, rows_actual)
 
   def test_collector_translates_http_404_to_table_does_not_exist(self):
@@ -122,14 +120,14 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
         MockHttpError(404))
 
     with self.assertRaises(external.TableDoesNotExist):
-      self.collector.collect_results(self.dummy_job_id)
+      self.collector.collect_results('dummy_job_id')
 
   def test_collector_translates_http_400_to_job_failure(self):
     self.mock_jobs_service.getQueryResults().execute.side_effect = (
         MockHttpError(400))
 
     with self.assertRaises(external.BigQueryJobFailure):
-      self.collector.collect_results(self.dummy_job_id)
+      self.collector.collect_results('dummy_job_id')
 
   def test_collector_ignores_two_http_500_errors(self):
     """Keep retrying if the first two HTTP requests fail."""
@@ -140,7 +138,7 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
     self.mock_jobs_service.getQueryResults().execute.side_effect = (
         MockHttpError(500), MockHttpError(500), mock_response)
     rows_expected = mock_result_rows
-    rows_actual = self.collector.collect_results(self.dummy_job_id)
+    rows_actual = self.collector.collect_results('dummy_job_id')
     self.assertEqual(rows_expected, rows_actual)
 
   def test_collector_fails_after_five_http_500_errors(self):
@@ -149,7 +147,7 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
         MockHttpError(500))
 
     with self.assertRaises(external.BigQueryCommunicationError):
-      self.collector.collect_results(self.dummy_job_id)
+      self.collector.collect_results('dummy_job_id')
     self.assertEqual(
         5, self.mock_jobs_service.getQueryResults().execute.call_count)
 

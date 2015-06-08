@@ -143,7 +143,7 @@ class BigQueryJobResultCollector(object):
     """Wait until a job is complete and gather all results.
 
     Args:
-      job_id: (int) Job ID for which to retrieve results.
+      job_id: (str) Job ID for which to retrieve results.
 
     Returns:
       (list) A list of result rows from the completed BigQuery job.
@@ -172,7 +172,7 @@ class BigQueryJobResultCollector(object):
     may be greater or less than the total number of rows available.
 
     Args:
-      job_id: (int) Job ID for which to retrieve results.
+      job_id: (str) Job ID for which to retrieve results.
       page_token: Token that indicates which page of results for which to
         retrieve results or None to retrieve the first page of results.
 
@@ -195,12 +195,11 @@ class BigQueryJobResultCollector(object):
         if retries_remaining > 0:
           sleep_seconds = 10
           logging.warning(('Failed to communicate with BigQuery to retrieve '
-                           'job %d. Retrying in %d seconds... (%d attempts '
+                           'job %s. Retrying in %d seconds... (%d attempts '
                            'remaining)'),
                           job_id, sleep_seconds, retries_remaining)
           time.sleep(sleep_seconds)
           retries_remaining -= 1
-          continue
         else:
           raise e
 
