@@ -101,7 +101,8 @@ class ExternalQueryHandler:
 
         write_metric_calculations_to_file(self.metadata['data_filepath'], subset_metric_calculations)
         self.result = True
-      except (ValueError, telescope.external.QueryFailure) as caught_error:
+      except (ValueError, telescope.external.BigQueryJobFailure,
+              telescope.external.BigQueryCommunicationError) as caught_error:
         logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
             caught_error = caught_error, site = self.metadata['site'],
             client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
@@ -428,7 +429,8 @@ def process_selector_queue(selector_queue, google_auth_config,
     try:
       bq_query_call = telescope.external.BigQueryCall(google_auth_config)
       bq_job_id = bq_query_call.run_asynchronous_query(bq_query_string, batch_mode = is_batched_query)
-    except (SSLError, telescope.external.QueryFailure) as caught_error:
+    except (SSLError, telescope.external.BigQueryJobFailure,
+            telescope.external.BigQueryCommunicationError) as caught_error:
       logger.warn(("Caught request error {caught_error} on query, cooling " +
                     "down for a minute.").format(caught_error = caught_error))
       selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
