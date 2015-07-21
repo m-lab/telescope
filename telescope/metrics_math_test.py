@@ -40,12 +40,6 @@ class MetricsMathTest(unittest.TestCase):
     self.assertEqual(timestamp_expected, result['timestamp'])
     self.assertEqual(metric_value_expected, result['result'])
 
-  def test_calculate_results_list_hop_count(self):
-    # TODO: Write this test.
-    pass
-    # mock_row = {}
-    # self.assertMetricMatchesExpected(mock_row, 'hop_count', 1407959123, 15)
-
   def test_calculate_results_list_minrtt(self):
     mock_row = {
         'web100_log_entry_log_time': '1407959123',

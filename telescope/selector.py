@@ -26,14 +26,6 @@ import iptranslation
 import utils
 
 
-_metric_to_project = {
-  'download_throughput': 'ndt',
-  'upload_throughput': 'ndt',
-  'minimum_rtt': 'ndt',
-  'average_rtt': 'ndt',
-  'packet_retransmit_rate': 'ndt'
-  }
-
 class Selector(object):
   """Represents the data required to select a dataset from the M-Lab data.
 
@@ -45,7 +37,6 @@ class Selector(object):
        how to translate the IP address information.
      client_provider: (str) Name of provider for which to retrieve data.
      site_name: (str) Name of M-Lab site for which to retrieve data.
-     mlab_project: (str) Name of project which holds the desired data.
   """
 
   def __init__(self):
@@ -55,7 +46,6 @@ class Selector(object):
     self.ip_translation_spec = None
     self.client_provider = None
     self.site = None
-    self.mlab_project = None
 
   def __repr__(self):
     return ("<Selector Object (site: {0}, client_provider: {1}, metric: {2}, " +
@@ -101,7 +91,6 @@ class MultiSelector(object):
         selector.client_provider = client_provider
         selector.site = site
         selector.metric = metric
-        selector.mlab_project = _metric_to_project[metric]
         selectors.append(selector)
     return selectors
 
@@ -264,18 +253,24 @@ class SelectorFileParser(object):
 
 class SelectorFileValidator(object):
     def validate(self, selector_dict):
-        raise NotImplementedError('Subclasses must implement this function.')
-    def validate_common(self, selector_dict):
-        if not selector_dict.has_key('duration'):
-            raise ValueError('UnsupportedDuration')
+      raise NotImplementedError('Subclasses must implement this function.')
 
-        if not selector_dict.has_key('metrics') or \
-            type(selector_dict['metrics']) != list:
-                raise ValueError('MetricsRequiresList')
-        else:
-            for metric in selector_dict['metrics']:
-                if metric not in _metric_to_project:
-                    raise ValueError('UnsupportedMetric')
+    def validate_common(self, selector_dict):
+      if not selector_dict.has_key('duration'):
+        raise ValueError('UnsupportedDuration')
+
+      if (('metrics' not in selector_dict) or
+          (type(selector_dict['metrics']) != list)):
+        raise ValueError('MetricsRequiresList')
+
+      supported_metrics = ('upload_throughput',
+                           'download_throughput',
+                           'average_rtt',
+                           'minimum_rtt',
+                           'packet_retransmit_rate')
+      for metric in selector_dict['metrics']:
+        if metric not in supported_metrics:
+          raise ValueError('UnsupportedMetric')
 
 
 class SelectorFileValidator1_1(SelectorFileValidator):

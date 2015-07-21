@@ -53,7 +53,6 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
     generator = query.BigQueryQueryGenerator(start_time_utc,
                                              end_time_utc,
                                              metric,
-                                             'ndt',
                                              server_ips,
                                              client_ip_blocks)
     return generator.query()

@@ -49,7 +49,6 @@ def filter_measurements_list(metric, measurements_list):
       'minimum_rtt': _filter_minimum_rtt_measurement,
       'average_rtt': _filter_average_rtt_measurement,
       'packet_retransmit_rate': _filter_packet_retransmit_rate_measurement,
-      'hop_count': _filter_hop_count_measurement
       }
   assert metric in filter_functions
   return filter(filter_functions[metric], measurements_list)
@@ -291,9 +290,4 @@ def _filter_packet_retransmit_rate_measurement(measurement):
   return (_filter_s2c_measurement(measurement) and
           (int(measurement['web100_log_entry_snap_SegsRetrans']) != 0) and
           (int(measurement['web100_log_entry_snap_DataSegsOut']) > 0))
-
-
-def _filter_hop_count_measurement(measurement):
-  """Hop count measurement validation has yet to be defined."""
-  raise NotImplementedError('Hop count validation is not yet defined.')
 
