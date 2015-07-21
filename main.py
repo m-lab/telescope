@@ -305,7 +305,7 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
 
   server_ips = []
   try:
-    for retrieved_site_ip in mlab_site_resolver.get_site_ips(selector.site):
+    for retrieved_site_ip in mlab_site_resolver.get_site_ndt_ips(selector.site):
       server_ips.append(retrieved_site_ip)
       logger.debug('Found IP for {site} of {site_ip}.'.format(
           site=selector.site, site_ip=retrieved_site_ip))
