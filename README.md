@@ -35,7 +35,7 @@ To create a project:
 
 1. `pip install -r requirements.txt`
 1. Ensure that you have a project in the Google Developer Console (see above)
-1. `python main.py documentation/examples/2014-02-01+30d_lga02_comcast_all-selector.json`
+1. `python telescope/telescope.py documentation/examples/interconnection_study_example.json`
 1. The first time you run Telescope, it will prompt you to grant OAuth permission to your Google account in order to make queries to the [M-Lab datastore in BigQuery](https://cloud.google.com/bigquery/docs/dataset-mlab)
 1. When OAuth authentication completes, Telescope will perform the queries specified by the selector file. The queries may take between 45 seconds and 10 minutes to comlete.
 
