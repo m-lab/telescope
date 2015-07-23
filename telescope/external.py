@@ -15,9 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import httplib2
 import logging
-import datetime
+import os
 import time
 
 from ssl import SSLError
@@ -98,7 +99,8 @@ class GoogleAPIAuth:
   def authenticate_with_google(self):
 
     flow = flow_from_clientsecrets(
-        'resources/client_secrets.json',
+        os.path.join(os.path.dirname(__file__),
+                     'resources/client_secrets.json'),
         scope='https://www.googleapis.com/auth/bigquery')
     storage = Storage(self.credentials_filepath)
     credentials = storage.get()

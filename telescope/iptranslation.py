@@ -47,7 +47,7 @@ class IPTranslationStrategySpec(object):
 
 class IPTranslationStrategyFactory(object):
 
-  def __init__(self, file_opener = open):
+  def __init__(self, file_opener=open):
     self._file_opener = file_opener
     self._cache = {}
 
@@ -76,7 +76,7 @@ class IPTranslationStrategyFactory(object):
         snapshot = (snapshot_datetime, snapshot_file)
         snapshots.append(snapshot)
       except IOError as io_error:
-        raise iptranslation.MissingMaxMindError(snapshot_filename, io_error)
+        raise MissingMaxMindError(snapshot_path, io_error)
 
     return IPTranslationStrategyMaxMind(snapshots)
 
@@ -156,7 +156,8 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
     """
     date_string = snapshot_datetime.strftime('%Y%m%d')
     snapshot_filename = 'GeoIPASNum2-%s.csv' % date_string
-    return os.path.join(maxmind_dir, snapshot_filename)
+    return os.path.join(os.path.dirname(__file__), maxmind_dir,
+                        snapshot_filename)
 
   def _parse_maxmind_snapshot(self, snapshot_file):
     """ Parses a MaxMind snapshot file into a list of blocks with associated
