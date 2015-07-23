@@ -20,7 +20,7 @@ import sys
 import unittest
 
 sys.path.insert(1, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '..')))
+    os.path.join(os.path.dirname(__file__), '../telescope')))
 import utils
 
 
