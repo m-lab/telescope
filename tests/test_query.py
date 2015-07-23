@@ -16,9 +16,13 @@
 # limitations under the License.
 
 import datetime
+import os
 import re
+import sys
 import unittest
 
+sys.path.insert(1, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../telescope')))
 import query
 import utils
 
@@ -311,4 +315,3 @@ WHERE
 
 if __name__ == '__main__':
   unittest.main()
-

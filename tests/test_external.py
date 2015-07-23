@@ -15,13 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
 import time
 import unittest
 
-import external
-
 import apiclient
 import mock
+
+sys.path.insert(1, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../telescope')))
+import external
 
 
 class MockHttpError(apiclient.errors.HttpError):

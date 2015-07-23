@@ -15,11 +15,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import mlab
-import mox
+import os
 import socket
+import sys
 import unittest
+
+import mox
+
+sys.path.insert(1, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../telescope')))
+import mlab
+
 
 class MLabTest(unittest.TestCase):
 
@@ -62,4 +68,3 @@ class MLabTest(unittest.TestCase):
 
 if __name__ == '__main__':
   unittest.main()
-

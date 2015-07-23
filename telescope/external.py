@@ -97,8 +97,9 @@ class GoogleAPIAuth:
 
   def authenticate_with_google(self):
 
-    flow = flow_from_clientsecrets('client_secrets.json',
-                                   scope='https://www.googleapis.com/auth/bigquery')
+    flow = flow_from_clientsecrets(
+        'resources/client_secrets.json',
+        scope='https://www.googleapis.com/auth/bigquery')
     storage = Storage(self.credentials_filepath)
     credentials = storage.get()
 
