@@ -15,12 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-import utils
+import os
+import sys
 import unittest
 
-class UtilsTest(unittest.TestCase):
+sys.path.insert(1, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../telescope')))
+import utils
 
+
+class UtilsTest(unittest.TestCase):
 
   def test_(self):
     self.assertEquals('att.csv', utils.strip_special_chars('at&t.csv'))

@@ -15,13 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 import copy
 import datetime
-import json
-import unittest
 import itertools
+import json
+import os
+import sys
+import unittest
 
+sys.path.insert(1, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../telescope')))
 import iptranslation
 import selector
 import utils

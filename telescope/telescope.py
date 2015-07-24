@@ -31,13 +31,14 @@ import Queue
 
 from ssl import SSLError
 
-import telescope.external
-import telescope.filters
-import telescope.metrics_math
-import telescope.mlab
-import telescope.query
-import telescope.selector
-import telescope.utils
+import external
+import filters
+import iptranslation
+import metrics_math
+import mlab
+import query
+import selector
+import utils
 
 
 MAX_THREADS_NORMAL_MODE = 18
@@ -73,7 +74,7 @@ class ExternalQueryHandler:
         Args:
           job_id (str): ID of job for which to retrieve data.
 
-          query_object (telescope.external.BigQueryCall): Query object
+          query_object (external.BigQueryCall): Query object
             responsible for retrieving data from BigQuery.
 
         Returns:
@@ -88,7 +89,7 @@ class ExternalQueryHandler:
         bq_query_returned_data = query_object.retrieve_job_data(job_id)
         logger.debug('Received data, processing according to {metric} metric.'.format(metric = self.metadata['metric']))
 
-        validation_results = telescope.filters.filter_measurements_list(
+        validation_results = filters.filter_measurements_list(
             self.metadata['metric'], bq_query_returned_data)
         number_kept = len(validation_results)
         number_discarded = len(bq_query_returned_data) - len(validation_results)
@@ -96,17 +97,17 @@ class ExternalQueryHandler:
                       "{number_discarded}.").format(number_kept = number_kept,
                                                   number_discarded = number_discarded))
 
-        subset_metric_calculations = telescope.metrics_math.calculate_results_list(
+        subset_metric_calculations = metrics_math.calculate_results_list(
             self.metadata['metric'], validation_results)
 
         write_metric_calculations_to_file(self.metadata['data_filepath'], subset_metric_calculations)
         self.result = True
-      except (ValueError, telescope.external.BigQueryJobFailure,
-              telescope.external.BigQueryCommunicationError) as caught_error:
+      except (ValueError, external.BigQueryJobFailure,
+              external.BigQueryCommunicationError) as caught_error:
         logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
             caught_error = caught_error, site = self.metadata['site'],
             client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
-      except telescope.external.TableDoesNotExist:
+      except external.TableDoesNotExist:
         logger.error(("Requested tables for ({site}, {client_provider}, " +
                       "{metric}) do not exist, moving on.").format( site = self.metadata['site'],
                           client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
@@ -214,7 +215,7 @@ def build_filename(resource_type, outpath, date, duration, site, client_provider
                                     client_provider = client_provider,
                                     metric = metric,
                                     extension = extensions[resource_type])
-  filename = telescope.utils.strip_special_chars(filename)
+  filename = utils.strip_special_chars(filename)
   filepath = os.path.join(outpath, filename)
   return filepath
 
@@ -253,7 +254,7 @@ def selectors_from_files(selector_files):
         (list): A list of Selector objects that were successfully parsed.
   """
   logger = logging.getLogger('telescope')
-  parser = telescope.selector.SelectorFileParser()
+  parser = selector.SelectorFileParser()
   selectors = []
   for selector_file in selector_files:
     logger.debug('Attempting to parse selector file at: %s', selector_file)
@@ -273,7 +274,7 @@ def shuffle_selectors(selectors):
 
 
 def create_ip_translator(ip_translator_spec):
-  factory = telescope.iptranslation.IPTranslationStrategyFactory()
+  factory = iptranslation.IPTranslationStrategyFactory()
   return factory.create(ip_translator_spec)
 
 def generate_query(selector, ip_translator, mlab_site_resolver):
@@ -281,13 +282,13 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
       selector object.
 
       Args:
-        selector (telescope.selector.Selector): Selector object that specifies what
-        data to retrieve.
+        selector (selector.Selector): Selector object that specifies what data
+        to retrieve.
 
-        ip_translator (telescope.iptranslation.IPTranslationStrategy): Translator from
-        ASN name to associated IP address blocks.
+        ip_translator (iptranslation.IPTranslationStrategy): Translator from ASN
+        name to associated IP address blocks.
 
-        mlab_site_resolver (telescope.mlab.MLabSiteResolver): Resolver to translate M-Lab
+        mlab_site_resolver (mlab.MLabSiteResolver): Resolver to translate M-Lab
         site IDs to a set of IP addresses.
 
       Returns:
@@ -313,11 +314,11 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
   except Exception as caught_error:
     raise MLabServerResolutionFailed(caught_error)
 
-  query_generator = telescope.query.BigQueryQueryGenerator(start_time_datetime,
-                                                     end_time_datetime,
-                                                     selector.metric,
-                                                     server_ips,
-                                                     network_lookup_found_blocks)
+  query_generator = query.BigQueryQueryGenerator(start_time_datetime,
+                                                 end_time_datetime,
+                                                 selector.metric,
+                                                 server_ips,
+                                                 network_lookup_found_blocks)
   return (query_generator.query(), query_generator.table_span())
 
 def duration_to_string(duration_seconds):
@@ -427,10 +428,10 @@ def process_selector_queue(selector_queue, google_auth_config,
       is_batched_query = False
 
     try:
-      bq_query_call = telescope.external.BigQueryCall(google_auth_config)
+      bq_query_call = external.BigQueryCall(google_auth_config)
       bq_job_id = bq_query_call.run_asynchronous_query(bq_query_string, batch_mode = is_batched_query)
-    except (SSLError, telescope.external.BigQueryJobFailure,
-            telescope.external.BigQueryCommunicationError) as caught_error:
+    except (SSLError, external.BigQueryJobFailure,
+            external.BigQueryCommunicationError) as caught_error:
       logger.warn(("Caught request error {caught_error} on query, cooling " +
                     "down for a minute.").format(caught_error = caught_error))
       selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
@@ -471,8 +472,8 @@ def main(args):
   # concurrent distribution on BigQuery tables.
   selectors = shuffle_selectors(selectors)
 
-  ip_translator_factory = telescope.iptranslation.IPTranslationStrategyFactory()
-  mlab_site_resolver = telescope.mlab.MLabSiteResolver()
+  ip_translator_factory = iptranslation.IPTranslationStrategyFactory()
+  mlab_site_resolver = mlab.MLabSiteResolver()
   for selector in selectors:
     thread_metadata = {
                       'date': selector.start_time.strftime('%Y-%m-%d-%H%M%S'),
@@ -489,7 +490,7 @@ def main(args):
                                                       thread_metadata['client_provider'],
                                                       thread_metadata['metric'])
     if (args.ignorecache is False and
-        telescope.utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
+        utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
       logger.info(('Raw data file found ({data_filepath}), assuming this is cached copy of same data and ' +
                    'moving off. Use --ignorecache to suppress this behavior.').format(**thread_metadata))
       continue
@@ -539,9 +540,9 @@ def main(args):
                     'mechanism for its API.')
 
       try:
-        google_auth_config = telescope.external.GoogleAPIAuth(
+        google_auth_config = external.GoogleAPIAuth(
             args.credentials_filepath, is_headless = args.noauth_local_webserver)
-      except telescope.external.APIConfigError:
+      except external.APIConfigError:
         logger.error("Could not find developer project, please create one in " +
                           "Developer Console to continue. (See README.md)")
         return None
@@ -577,7 +578,7 @@ if __name__ == "__main__":
                         help="variable output verbosity (e.g., -vv is more than -v)")
   parser.add_argument('-o', '--output', default='processed/',
                         help='Output file path. If the folder does not exist, it will be created.',
-                        type=telescope.utils.create_directory_if_not_exists)
+                        type=utils.create_directory_if_not_exists)
   parser.add_argument('--maxminddir', default='resources/', help='MaxMind GeoLite ASN snapshot directory.')
   parser.add_argument('--savequery', default=False, action='store_true',
                         help='Save the BigQuery statement to the [output] directory as a .sql')
