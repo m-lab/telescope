@@ -41,8 +41,6 @@ class IPTranslationStrategyFactoryTest(unittest.TestCase):
     """Verify that we can create a MaxMind IP translator."""
     mock_file_opener = mock.Mock(return_value=io.BytesIO())
     factory = iptranslation.IPTranslationStrategyFactory(mock_file_opener)
-    strategy_params = {'maxmind_dir': '/fake/dir',
-                       'db_snapshots': ['2012-01-01']}
     strategy_spec = self._createDummyMaxmindStrategySpec()
     self.assertIsNotNone(factory.create(strategy_spec))
     mock_file_opener.assert_called_with('/fake/dir/GeoIPASNum2-20120101.csv',
