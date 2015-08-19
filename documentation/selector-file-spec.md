@@ -8,27 +8,26 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 {
     "file_format_version": 1.1,
     "duration": "30d",
-    "metric": "download_throughput",
+    "metrics": ["download_throughput"],
     "ip_translation":{
         "strategy": "maxmind",
         "params": {
           "db_snapshots": ["2014-08-04"]
         }
     },
-    "site": "lga01",
-    "client_provider": "Verizon",
+    "sites": ["lga01"],
+    "client_providers": ["Verizon"],
     "start_time": "2014-07-01T00:00:00Z"
 }
 ```
 
 # Field Specifications
 
-`file_format_version`: Specifies the version of this format file. This must be 1.
+`file_format_version`: Specifies the version of this format file. This must be '1.1'.
 
 `duration`: Duration of time window (in days). Value must end with 'd'.
 
-`metric`: Text name of the metric for which to gather data. Valid values are:
-* `all` - Retrieves data for all metrics.
+`metrics`: Text name of the metric for which to gather data. Valid values are:
 * `average_rtt`
 * `minimum_rtt`
 * `download_throughput`
@@ -44,16 +43,26 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 
 `db_snapshots`: Specifies the snapshot dates (in YYYY-MM-DD format) of the MaxMind databases that are required to resolve IP addresses to providers. This field is optional. If not specified or specified as an empty list, consuming programs should use database snapshots closest in time to the snapshots specified and should suppress warnings to the user about missing snapshots.
 
-`site`: Name of M-Lab site where data was collected.
+`sites` _(optional)_: Name of M-Lab sites where data was collected.
 
-`client_provider`: Text name of the client provider. This is the substring that should appear in all AS names when a mapping is performed from this parameter to corresponding ASes. For example, "Verizon" should match AS names "Verizon Online LLC", "MCI Communications Services, Inc. d/b/a Verizon Business", "Verizon Data Services LLC", etc. Supports a limited number of provider metanames that translate to all known AS name queries for that provider:
+`client_providers` _(optional)_: Text name of the client provider. This is the substring that should appear in all AS names when a mapping is performed from this parameter to corresponding ASes. For example, "Verizon" should match AS names "Verizon Online LLC", "MCI Communications Services, Inc. d/b/a Verizon Business", "Verizon Data Services LLC", etc. Supports a limited number of provider metanames that translate to all known AS name queries for that provider:
 
 * `twc`: Time Warner Cable
 * `centurylink`: CenturyLink
 * `level3`: Level 3 Communications
 * `cablevision`: Cablevision Communications
 
-`start_time`: Start time of the window in which to collect test results (in ISO 8601 format). This value must end in `Z` (i.e. only UTC time zone is supported).
+`client_countries` _(optional)_: A list of ISO 3166-1 alpha-2 country code(s) associated with the IP address of the measurement client. The geolocation of the client address is recorded within BigQuery at the time of measurement based on MaxMind current to that date.
+
+`start_times`: List of start times of the window in which to collect test results (in ISO 8601 format). Start time values must end in `Z` (i.e. only UTC time zone is supported).
+
+# Changelog 
+
+## As of version 1.1
+
+* Added optional `client_countries` property.
+* The properties `metric`, `client_provider` and `site` are now represented by the lists `metrics`, `client_providers` and `sites`. 
+* Made `client_providers` and `sites` optional.
 
 # Deprecated
 
