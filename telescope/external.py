@@ -322,37 +322,33 @@ class BigQueryCall:
     if self.project_id is not None:
       started_checking = datetime.datetime.utcnow()
 
-      notification_identifier = "{metric}, {site}, {client_provider}, {date}, {duration}".format(**job_metadata)
-      self.logger.info('Queued request for {notification_identifier}, received job id: {job_id}'.format(
-          notification_identifier = notification_identifier, job_id = job_id))
+      notification_identifier = ', '.join(filter(None, job_metadata.values()))
+      self.logger.info('Queued request for {0}, received job id: {1}'.format(
+          notification_identifier, job_id))
 
       while True:
         try:
           job_collection = query_object.authenticated_service.jobs()
           job_collection_state = job_collection.get(projectId = self.project_id, jobId = job_id).execute()
         except (SSLError, Exception, AttributeError, HttpError, httplib2.ServerNotFoundError) as caught_error:
-          self.logger.warn(('Encountered error ({caught_error}) monitoring ' +
-                            'for {notification_identifier}, could be temporary, ' +
-                            'not bailing out.').format(caught_error = caught_error,
-                                                      notification_identifier = notification_identifier))
+          self.logger.warn(('Encountered error ({0}) monitoring ' +
+                            'for {1}, could be temporary, ' +
+                            'not bailing out.').format(caught_error, notification_identifier))
           job_collection_state = None
 
         if job_collection_state is not None:
           time_waiting = int((datetime.datetime.utcnow() - started_checking).total_seconds())
 
           if job_collection_state['status']['state'] == 'RUNNING':
-            self.logger.info(('Waiting for {notification_identifier} to complete, spent {time_waiting} '
-                              'seconds so far.').format(notification_identifier = notification_identifier,
-                                                        time_waiting = time_waiting))
+            self.logger.info(('Waiting for {0} to complete, spent {1} '
+                              'seconds so far.').format(notification_identifier, time_waiting))
             time.sleep(10)
           elif job_collection_state['status']['state'] == 'PENDING':
-            self.logger.info(('Waiting for {notification_identifier} to submit, spent {time_waiting} '
-                              'seconds so far.').format(notification_identifier = notification_identifier,
-                                                        time_waiting = time_waiting))
+            self.logger.info(('Waiting for {0} to submit, spent {1} '
+                              'seconds so far.').format(notification_identifier, time_waiting))
             time.sleep(60)
           elif job_collection_state['status']['state'] == 'DONE' and callback_function is not None:
-            self.logger.info('Found completion status for {notification_identifier}.'.format(
-                notification_identifier = notification_identifier))
+            self.logger.info('Found completion status for {0}.'.format(notification_identifier))
             callback_function(job_id, query_object = self)
             break
           else:

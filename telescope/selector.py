@@ -45,13 +45,14 @@ class Selector(object):
     self.metric = None
     self.ip_translation_spec = None
     self.client_provider = None
+    self.client_country = None
     self.site = None
 
   def __repr__(self):
-    return ("<Selector Object (site: {0}, client_provider: {1}, metric: {2}, " +
-            "start_time: {3}, duration: {4})>").format(self.site,
-                self.client_provider, self.metric, self.start_time.strftime("%Y-%m-%d"),
-                self.duration)
+    return ("<Selector Object (site: {0}, client_provider: {1}, "
+            "client_country: {2}, metric: {3}, start_time: {4}, "
+            "duration: {5})>").format(self.site, self.client_provider,
+              self.metric, self.start_time.strftime("%Y-%m-%d"), self.duration)
 
 
 class MultiSelector(object):
@@ -73,25 +74,28 @@ class MultiSelector(object):
   def __init__(self):
     self.start_times = None
     self.duration = None
-    self.metrics = None
+    self.metrics = [None]
     self.ip_translation_spec = None
-    self.client_providers = None
-    self.sites = None
+    self.client_providers = [None]
+    self.client_countries = [None]
+    self.sites = [None]
 
   def split(self):
     """Splits a MultiSelector into an equivalent list of Selectors."""
     selectors = []
-    selector_product = itertools.product(
-        self.start_times, self.client_providers, self.sites, self.metrics)
-    for start_time, client_provider, site, metric in selector_product:
-        selector = Selector()
-        selector.ip_translation_spec = self.ip_translation_spec
-        selector.duration = self.duration
-        selector.start_time = start_time
-        selector.client_provider = client_provider
-        selector.site = site
-        selector.metric = metric
-        selectors.append(selector)
+    selector_product = itertools.product(self.start_times,
+        self.client_providers, self.client_countries, self.sites, self.metrics)
+    for start_time, client_provider, client_country, site, \
+        metric in selector_product:
+      selector = Selector()
+      selector.ip_translation_spec = self.ip_translation_spec
+      selector.duration = self.duration
+      selector.start_time = start_time
+      selector.client_provider = client_provider
+      selector.client_country = client_country
+      selector.site = site
+      selector.metric = metric
+      selectors.append(selector)
     return selectors
 
 
@@ -145,14 +149,25 @@ class SelectorFileParser(object):
     multi_selector = MultiSelector()
     multi_selector.start_times = self._parse_start_times(
         selector_json['start_times'])
-    multi_selector.client_providers = selector_json['client_providers']
-    multi_selector.sites = selector_json['sites']
     multi_selector.metrics = selector_json['metrics']
     multi_selector.duration = self._parse_duration(selector_json['duration'])
     multi_selector.ip_translation_spec = self._parse_ip_translation(
         selector_json['ip_translation'])
+    
+    if 'client_providers' in selector_json:
+      multi_selector.client_providers = self._normalize_string_values(
+                                              selector_json['client_providers'])
+    if 'client_countries' in selector_json:
+      multi_selector.client_countries = self._normalize_string_values(
+                                              selector_json['client_countries'])
+    if 'sites' in selector_json:
+      multi_selector.sites = self._normalize_string_values(
+                                  selector_json['sites'])
 
     return multi_selector.split()
+
+  def _normalize_string_values(self, field_values):
+    return [field_value.lower() for field_value in field_values]
 
   def _parse_start_times(self, start_times_raw):
     start_times = []
@@ -263,6 +278,11 @@ class SelectorFileValidator(object):
           (type(selector_dict['metrics']) != list)):
         raise ValueError('MetricsRequiresList')
 
+      if selector_dict.has_key('client_countries'):
+        for client_country in selector_dict['client_countries']:
+          if not re.match('^[a-zA-Z]{2}$', client_country):
+            raise ValueError('Requires ISO alpha-2 country code.')
+
       supported_metrics = ('upload_throughput',
                            'download_throughput',
                            'average_rtt',
@@ -289,16 +309,23 @@ class MultiSelectorJsonEncoder(json.JSONEncoder):
     return json.JSONEncoder.default(self, obj)
 
   def _encode_multi_selector(self, selector):
-    return {
+    base_selector = {
         'file_format_version': 1.1,
         'duration': self._encode_duration(selector.duration),
         'metrics': selector.metrics,
         'ip_translation': self._encode_ip_translation(
             selector.ip_translation_spec),
-        'sites': selector.site_names,
-        'client_providers': selector.client_providers,
         'start_times': self._encode_start_times(selector.start_times)
         }
+
+    if selector.site_names != [None]:
+        base_selector['sites'] = selector.site_names
+    if selector.client_countries != [None]:
+        base_selector['client_countries'] = selector.client_countries
+    if selector.client_providers != [None]:
+        base_selector['client_providers'] = selector.client_providers
+
+    return base_selector
 
   def _encode_duration(self, duration):
     return str(duration) + 'd'
