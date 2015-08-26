@@ -57,20 +57,27 @@ class MLabServerResolutionFailed(Exception):
 class ExternalQueryHandler:
   """ Monitors external jobs in BigQuery and retrieves and processed the
       resulting data when the job completes.
-
-  Attributes:
-      result (bool): Whether the query has returned a result.
+  Args:
+      filepath (str): Where the processed results will be stored.
       metadata (dict): Metadata on the query for output labels and further
           processing of received values.
-      fatal_error (bool): Whether the query has received a fatal error.
-      data_filepath (str): Where the processed results will be stored.
+
+  Attributes:
+      _has_result (bool): Whether the query has returned a result.
+      _has_error (bool): Whether the query has received a fatal error.
   """
 
-  def __init__(self):
-    self.result = False
-    self.metadata = None
-    self.fatal_error = None
-    self.data_filepath = None
+  def __init__(self, filepath, metadata):
+    self._metadata = metadata
+    self._filepath = filepath
+    self._has_result = False
+    self._has_error = False
+
+  def has_result(self):
+    return self._has_result
+
+  def has_error(self):
+    return self._has_error
 
   def retrieve_data_upon_job_completion(self, job_id, query_object = None):
     """ Waits for a BigQuery job to complete, then retrieves the data, runs
@@ -88,15 +95,14 @@ class ExternalQueryHandler:
           written to file, False otherwise.
     """
     logger = logging.getLogger('telescope')
-    self.result = False
 
     if query_object is not None:
       try:
         bq_query_returned_data = query_object.retrieve_job_data(job_id)
-        logger.debug('Received data, processing according to {metric} metric.'.format(metric = self.metadata['metric']))
+        logger.debug('Received data, processing according to {metric} metric.'.format(metric = self._metadata['metric']))
 
         validation_results = filters.filter_measurements_list(
-            self.metadata['metric'], bq_query_returned_data)
+            self._metadata['metric'], bq_query_returned_data)
         number_kept = len(validation_results)
         number_discarded = len(bq_query_returned_data) - len(validation_results)
         logger.info(("Filtered measurements, kept {number_kept} and discarded " +
@@ -104,21 +110,20 @@ class ExternalQueryHandler:
                                                   number_discarded = number_discarded))
 
         subset_metric_calculations = metrics_math.calculate_results_list(
-            self.metadata['metric'], validation_results)
+            self._metadata['metric'], validation_results)
 
-        write_metric_calculations_to_file(self.data_filepath, subset_metric_calculations)
-        self.result = True
+        write_metric_calculations_to_file(self._filepath, subset_metric_calculations)
+        self._has_result = True
       except (ValueError, external.BigQueryJobFailure,
               external.BigQueryCommunicationError) as caught_error:
-        logger.error(("Caught {caught_error} for ({site}, {client_provider}, "
-          "{metric}, {date}).").format(caught_error=caught_error,
-          **self.metadata))
+        logger.error(('Caught {caught_error} for ({site}, {client_provider}, '
+          '{metric}, {date}).').format(caught_error=caught_error,
+          **self._metadata))
       except external.TableDoesNotExist:
-        logger.error(("Requested tables for ({site}, {client_provider}, "
-          "{metric}, {date}) do not exist, moving on.").format(**self.metadata))
-        self.fatal_error = True
-    return self.result
-
+        logger.error(('Requested tables for ({site}, {client_provider}, '
+          '{metric}, {date}) do not exist, moving on.').format(**self._metadata))
+        self._has_error = True
+    return self._has_result
 
 def setup_logger(verbosity_level = 0):
   """ Create and configure application logging mechanism.
@@ -408,10 +413,8 @@ def process_selector_queue(selector_queue, google_auth_config,
       selector_queue.put((bq_query_string, bq_table_span, thread_metadata, data_filepath, True))
       continue
 
-    external_query_handler = ExternalQueryHandler()
+    external_query_handler = ExternalQueryHandler(data_filepath, thread_metadata)
     external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, data_filepath, True)
-    external_query_handler.metadata = thread_metadata
-    external_query_handler.data_filepath = data_filepath
 
     new_thread = threading.Thread(target=bq_query_call.monitor_query_queue,
                                     args = (bq_job_id, thread_metadata, None,
@@ -527,11 +530,11 @@ def main(args):
           # friendly notiication string.
           identifier_string = ', '.join(filter(None, thread_metadata.values()))
 
-          if (external_query_handler.result != True and
-              external_query_handler.fatal_error != True):
+          if (external_query_handler.has_result() != True and
+              external_query_handler.has_error() != True):
             selector_queue.put(external_query_handler.queue_set)
-          elif (external_query_handler.result != True and
-              external_query_handler.fatal_error == True):
+          elif (external_query_handler.has_result() != True and
+              external_query_handler.has_error() == True):
             logger.debug('Fatal error on %s, moving along.', identifier_string)
           else:
             logger.debug('Successfully retrieved %s.', identifier_string)
