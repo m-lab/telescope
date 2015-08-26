@@ -1,6 +1,6 @@
 # Overview
 
-The data subset selector file specifies subsets of M-Lab data, either for single dataset analysis or A-B comparisons.
+The data subset selector file specifies subsets of M-Lab data for single dataset analysis.
 
 # Example File
 
@@ -27,7 +27,7 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 
 `duration`: Duration of time window (in days). Value must end with 'd'.
 
-`metrics`: Text name of the metric for which to gather data. Valid values are:
+`metrics`: A list of metrics for which to gather data. Valid values are:
 * `average_rtt`
 * `minimum_rtt`
 * `download_throughput`
@@ -43,9 +43,9 @@ The data subset selector file specifies subsets of M-Lab data, either for single
 
 `db_snapshots`: Specifies the snapshot dates (in YYYY-MM-DD format) of the MaxMind databases that are required to resolve IP addresses to providers. This field is optional. If not specified or specified as an empty list, consuming programs should use database snapshots closest in time to the snapshots specified and should suppress warnings to the user about missing snapshots.
 
-`sites` _(optional)_: Name of M-Lab sites where data was collected.
+`sites` _(optional)_: A list of M-Lab sites indicated by their id (e.g. iad01) where the measurement was conducted against.
 
-`client_providers` _(optional)_: Text name of the client provider. This is the substring that should appear in all AS names when a mapping is performed from this parameter to corresponding ASes. For example, "Verizon" should match AS names "Verizon Online LLC", "MCI Communications Services, Inc. d/b/a Verizon Business", "Verizon Data Services LLC", etc. Supports a limited number of provider metanames that translate to all known AS name queries for that provider:
+`client_providers` _(optional)_: A list of names of client providers. The client provider name is the substring that should appear in all AS names when a mapping is performed from this parameter to corresponding ASes. For example, "Verizon" should match AS names "Verizon Online LLC", "MCI Communications Services, Inc. d/b/a Verizon Business", "Verizon Data Services LLC", etc. Supports a limited number of provider metanames that translate to all known AS name queries for that provider:
 
 * `twc`: Time Warner Cable
 * `centurylink`: CenturyLink

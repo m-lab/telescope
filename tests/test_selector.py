@@ -59,7 +59,7 @@ class SelectorFileParserTest(unittest.TestCase):
   def assertParsedSingleSelectorMatches(self, selector_expected, selector_file_contents):
     self.assertParsedSelectorsMatch([selector_expected], selector_file_contents)
 
-  def testDeprecatedFileFormats(self):
+  def testFailsParseForDeprecatedFileFormats(self):
     selector_file_contents = """{
            "file_format_version": 1,
            "duration": "30d",
@@ -78,9 +78,9 @@ class SelectorFileParserTest(unittest.TestCase):
               }
            ]
         }"""
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+    self.assertRaises(selector.SelectorParseError, self.parse_file_contents, selector_file_contents)
 
-  def testDeprecatedSubsetFunction(self):
+  def testFailsParseForv1_1WithDeprecatedSubsetFunction(self):
     selector_file_contents = """{
               "file_format_version": 1.1,
               "duration": "30d",
@@ -104,9 +104,9 @@ class SelectorFileParserTest(unittest.TestCase):
               }
               ]
           }"""
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+    self.assertRaises(selector.SelectorParseError, self.parse_file_contents, selector_file_contents)
 
-  def testValidInput_v1dot1_Simple_Complete(self):
+  def testSuccessfulParseOfValidv1_1FileWithAllOptionalFieldsDefined(self):
     selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",
@@ -295,7 +295,29 @@ class SelectorFileParserTest(unittest.TestCase):
     selector_expected.client_country = 'us'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
-  def testInvalidJson(self):
+  def testValidInput_v1dot1_notOptionalValuesStillParses(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testFailsParseForInvalidJson(self):
     selector_file_contents = """{
    "file_format_version": 1.1,
    "duration": "30d",
@@ -311,7 +333,7 @@ class SelectorFileParserTest(unittest.TestCase):
    "start_times": ["2014-02-01T00:00:00Z"]
 """
     # The final closing curly brace is missing, so this should fail
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+    self.assertRaises(selector.SelectorParseError, self.parse_file_contents, selector_file_contents)
 
 
 class MultiSelectorJsonEncoderTest(unittest.TestCase):

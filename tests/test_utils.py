@@ -26,13 +26,25 @@ import utils
 
 class UtilsTest(unittest.TestCase):
 
-  def test_(self):
+  def testStripSpecialCharacters(self):
     self.assertEquals('att.csv', utils.strip_special_chars('at&t.csv'))
     self.assertEquals('att.csv', utils.strip_special_chars('at&&&&&&&&t.csv'))
     self.assertEquals('att.csv', utils.strip_special_chars('at&&/;$&&&&&&t.csv'))
     self.assertEquals('maxmin-counts.csv', utils.strip_special_chars('max/min-counts.csv'))
     self.assertEquals('namesplacesdates.csv', utils.strip_special_chars(r'names\places\dates.csv'))
     self.assertEquals('spaces are okay.csv', utils.strip_special_chars('spaces are okay.csv'))
+
+  def testFilenameBuilder(self):
+    fake_filepath = utils.build_filename('/tmp/path/',
+                                              'date',
+                                              'duration',
+                                              'site',
+                                              'client_provider',
+                                              'client_country',
+                                              'metric',
+                                              '-fake.txt')
+    expected_filepath = '/tmp/path/date+duration_site_client_country_client_provider_metric-fake.txt'
+    self.assertEquals(expected_filepath, fake_filepath)
 
 if __name__ == '__main__':
   unittest.main()

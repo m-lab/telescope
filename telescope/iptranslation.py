@@ -120,7 +120,7 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
           * Maintains and consults an internal cache of results since lookup
             process is relatively slow and results should not change.
     """
-    if self._cache.has_key(asn_search_name):
+    if asn_search_name in self._cache:
       return self._cache[asn_search_name]
 
     notification_cache = set()
@@ -198,7 +198,7 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
           'level3': ['Level 3 Communications', 'GBLX'],
           'cablevision': ['Cablevision Systems', 'CSC Holdings', 'Cablevision Infrastructure', 'Cablevision Corporate', 'Optimum Online', 'Optimum WiFi', 'Optimum Network']
         }
-    if short_name_map.has_key(short_name):
+    if short_name in short_name_map:
       long_names = short_name_map[short_name]
       return self._regex_xor_names(long_names)
 

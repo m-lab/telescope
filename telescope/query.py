@@ -28,21 +28,20 @@ class BigQueryQueryGenerator(object):
   database_name = 'plx.google'
   table_format = '[{database_name}:m_lab.{table_date}.all]'
 
-  def __init__(self, start_time, end_time, metric,
-                server_ips = None, client_ip_blocks = None,
-                client_country = None):
+  def __init__(self, start_time, end_time, metric, server_ips=None,
+                client_ip_blocks=None, client_country=None):
     self.logger = logging.getLogger('telescope')
     self._select_list = self._build_select_list(metric)
     self._table_list = self._build_table_list(start_time, end_time)
     self._conditional_dict = {}
     self._add_data_direction_conditional(metric)
     self._add_log_time_conditional(start_time, end_time)
-    
-    if client_ip_blocks != []:
+
+    if client_ip_blocks:
       self._add_client_ip_blocks_conditional(client_ip_blocks)
     if client_country != None:
       self._add_client_country_conditional(client_country)
-    if server_ips != []:
+    if server_ips:
       self._add_server_ips_conditional(server_ips)
     self._query = self._create_query_string()
 
@@ -157,25 +156,20 @@ class BigQueryQueryGenerator(object):
                                               tool_specific_conditions)
 
     if 'data_direction' in self._conditional_dict:
-      conditional_list_string += '\n\tAND {data_direction}'.format(
-          data_direction=self._conditional_dict['data_direction'])
+      conditional_list_string += '\n\tAND %s' % self._conditional_dict['data_direction']
 
     log_times_joined = ' OR\n\t'.join(self._conditional_dict['log_time'])
-    conditional_list_string += '\n\tAND ({log_times})'.format(
-        log_times=log_times_joined)
+    conditional_list_string += '\n\tAND (%s)' % log_times_joined
 
-    if self._conditional_dict.has_key('server_ips'):
+    if 'server_ips' in self._conditional_dict:
       server_ips_joined = ' OR\n\t\t'.join(self._conditional_dict['server_ips'])
-      conditional_list_string += '\n\tAND ({server_ips})'.format(
-          server_ips=server_ips_joined)
+      conditional_list_string += '\n\tAND (%s)' % server_ips_joined
 
-    if self._conditional_dict.has_key('client_ip_blocks'):
+    if 'client_ip_blocks' in self._conditional_dict:
       client_ip_blocks_joined = ' OR\n\t\t'.join(self._conditional_dict['client_ip_blocks'])
-      conditional_list_string += '\n\tAND ({client_ip_blocks})'.format(
-        client_ip_blocks=client_ip_blocks_joined)
-    if self._conditional_dict.has_key('client_country'):
-       conditional_list_string += "\n\tAND ({conditional})".format(
-          conditional = self._conditional_dict['client_country'])
+      conditional_list_string += '\n\tAND (%s)' % client_ip_blocks_joined
+    if 'client_country' in self._conditional_dict:
+       conditional_list_string += '\n\tAND %s' % self._conditional_dict['client_country']
 
     built_query_string = built_query_format.format(
         select_list=select_list_string,
@@ -240,10 +234,8 @@ class BigQueryQueryGenerator(object):
 
     self._conditional_dict['server_ips'] = []
     for server_ip in unique_server_ips:
-      new_statement = (
-          'web100_log_entry.connection_spec.local_ip = \'{server_ip}\''.format(
-              server_ip=server_ip))
+      new_statement = 'web100_log_entry.connection_spec.local_ip = \'%s\'' % server_ip
       self._conditional_dict['server_ips'].append(new_statement)
 
   def _add_client_country_conditional(self, client_country):
-    self._conditional_dict['client_country'] = "connection_spec.client_geolocation.country_code = '" + client_country.upper() + "'"
+    self._conditional_dict['client_country'] = 'connection_spec.client_geolocation.country_code = \'%s\'' % client_country.upper()
