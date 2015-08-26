@@ -57,9 +57,9 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
     generator = query.BigQueryQueryGenerator(start_time_utc,
                                              end_time_utc,
                                              metric,
-                                             server_ips = server_ips,
-                                             client_ip_blocks = client_ip_blocks,
-                                             client_country = client_country)
+                                             server_ips=server_ips,
+                                             client_ip_blocks=client_ip_blocks,
+                                             client_country=client_country)
     return generator.query()
 
   def generate_download_throughput_query(self, start_time, end_time,
@@ -360,7 +360,7 @@ WHERE
 """
     self.assertQueriesEqual(query_expected, query_actual)
 
-  def testDownloadThroughputQuery_OptionalProperty_Site(self):
+  def testDownloadThroughputQuery_OptionalProperty_ServerIPs(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1)
     query_expected = """
@@ -394,7 +394,7 @@ WHERE
     self.assertQueriesEqual(query_expected, query_actual)
 
 
-  def testDownloadThroughputQuery_OptionalProperty_ClientProvider(self):
+  def testDownloadThroughputQuery_OptionalProperty_ClientIPBlocks(self):
     start_time = datetime.datetime(2014, 1, 1)
     end_time = datetime.datetime(2014, 2, 1)
     query_expected = """
@@ -424,7 +424,7 @@ WHERE
 """
     query_actual = self.generate_download_throughput_query(start_time,
                                                            end_time,
-                                                           client_ip_blocks = [(5, 10)])
+                                                           client_ip_blocks=[(5, 10)])
     self.assertQueriesEqual(query_expected, query_actual)
 
 
@@ -458,7 +458,7 @@ WHERE
 """
     query_actual = self.generate_download_throughput_query(start_time,
                                                            end_time,
-                                                           client_country = "US")
+                                                           client_country="US")
     self.assertQueriesEqual(query_expected, query_actual)
 
 if __name__ == '__main__':

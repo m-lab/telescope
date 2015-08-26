@@ -57,27 +57,31 @@ class MLabServerResolutionFailed(Exception):
 class ExternalQueryHandler:
   """ Monitors external jobs in BigQuery and retrieves and processed the
       resulting data when the job completes.
-  Args:
-      filepath (str): Where the processed results will be stored.
-      metadata (dict): Metadata on the query for output labels and further
-          processing of received values.
-
-  Attributes:
-      _has_result (bool): Whether the query has returned a result.
-      _has_error (bool): Whether the query has received a fatal error.
   """
 
   def __init__(self, filepath, metadata):
+    """ Inits ExternalQueryHandler ouput and metadata information.
+
+    Args:
+        filepath (str): Where the processed results will be stored.
+        metadata (dict): Metadata on the query for output labels and further
+            processing of received values.
+    """
     self._metadata = metadata
     self._filepath = filepath
-    self._has_result = False
-    self._has_error = False
 
-  def has_result(self):
-    return self._has_result
+    self._has_succeeded = False  # Whether the query has returned a result.
+    self._has_failed = False   # Whether the query has received a fatal error.
 
-  def has_error(self):
-    return self._has_error
+  @property
+  def has_succeeded(self):
+    """ Get whether the test has successfully completed. """
+    return self._has_succeeded
+
+  @property
+  def has_failed(self):
+    """ Get whether the test has encountered a fatal error. """
+    return self._has_failed
 
   def retrieve_data_upon_job_completion(self, job_id, query_object = None):
     """ Waits for a BigQuery job to complete, then retrieves the data, runs
@@ -113,7 +117,7 @@ class ExternalQueryHandler:
             self._metadata['metric'], validation_results)
 
         write_metric_calculations_to_file(self._filepath, subset_metric_calculations)
-        self._has_result = True
+        self._has_succeeded = True
       except (ValueError, external.BigQueryJobFailure,
               external.BigQueryCommunicationError) as caught_error:
         logger.error(('Caught {caught_error} for ({site}, {client_provider}, '
@@ -122,8 +126,8 @@ class ExternalQueryHandler:
       except external.TableDoesNotExist:
         logger.error(('Requested tables for ({site}, {client_provider}, '
           '{metric}, {date}) do not exist, moving on.').format(**self._metadata))
-        self._has_error = True
-    return self._has_result
+        self._has_failed = True
+    return self._has_succeeded
 
 def setup_logger(verbosity_level = 0):
   """ Create and configure application logging mechanism.
@@ -159,7 +163,6 @@ def write_metric_calculations_to_file(data_filepath, metric_calculations, should
   Returns:
       (bool) True if the file was written successfully, False otherwise.
   """
-
   logger = logging.getLogger('telescope')
   try:
     with open(data_filepath, 'w') as data_file_raw:
@@ -387,10 +390,10 @@ def process_selector_queue(selector_queue, google_auth_config,
       is_batched_query = True
     elif batchmode == 'automatic' and bq_table_span > max_tables_without_batch:
       logger.info(('Found {0} tables, when the maximum for non-batched '
-                    'mode is {1}, setting query to batched mode (this will '
-                    'increase the amount of time but lower failure rate). '
-                    'This behavior can be controled with the --batchmode '
-                    'argument.').format(bq_table_span, max_tables_without_batch))
+                   'mode is {1}, setting query to batched mode (this will '
+                   'increase the amount of time but lower failure rate). '
+                   'This behavior can be controled with the --batchmode '
+                   'argument.').format(bq_table_span, max_tables_without_batch))
       is_batched_query = True
     else:
       is_batched_query = False
@@ -401,7 +404,7 @@ def process_selector_queue(selector_queue, google_auth_config,
     except (SSLError, external.BigQueryJobFailure,
             external.BigQueryCommunicationError) as caught_error:
       logger.warn('Caught request error %s on query, cooling down for a '
-                    'minute.', caught_error)
+                  'minute.', caught_error)
       selector_queue.put((bq_query_string, bq_table_span, thread_metadata, data_filepath, True))
       time.sleep(60)
       bq_job_id = None
@@ -453,18 +456,18 @@ def main(args):
                       'metric': selector.metric
                     }
     data_filepath = utils.build_filename(args.output,
-                                          thread_metadata['date'],
-                                          thread_metadata['duration'],
-                                          thread_metadata['site'],
-                                          thread_metadata['client_provider'],
-                                          thread_metadata['client_country'],
-                                          thread_metadata['metric'],
-                                          '-raw.csv')
+                                         thread_metadata['date'],
+                                         thread_metadata['duration'],
+                                         thread_metadata['site'],
+                                         thread_metadata['client_provider'],
+                                         thread_metadata['client_country'],
+                                         thread_metadata['metric'],
+                                         '-raw.csv')
     if (args.ignorecache is False and
         utils.check_for_valid_cache(data_filepath) is True):
       logger.info(('Raw data file found ({0}), assuming this is '
-                    'cached copy of same data and moving off. Use '
-                    '--ignorecache to suppress this behavior.').format(data_filepath))
+                   'cached copy of same data and moving off. Use '
+                   '--ignorecache to suppress this behavior.').format(data_filepath))
       continue
 
     logger.debug('Did not find existing data file: %s', data_filepath)
@@ -486,13 +489,13 @@ def main(args):
 
     if args.savequery == True:
       bigquery_filepath = utils.build_filename(args.output,
-                                                thread_metadata['date'],
-                                                thread_metadata['duration'],
-                                                thread_metadata['site'],
-                                                thread_metadata['client_provider'],
-                                                thread_metadata['client_country'],
-                                                thread_metadata['metric'],
-                                                '-bigquery.sql')
+                                               thread_metadata['date'],
+                                               thread_metadata['duration'],
+                                               thread_metadata['site'],
+                                               thread_metadata['client_provider'],
+                                               thread_metadata['client_country'],
+                                               thread_metadata['metric'],
+                                               '-bigquery.sql')
       write_bigquery_to_file(bigquery_filepath, bq_query_string)
     if args.dryrun is False:
       """ Offer Queue a tuple of the BQ statement, BQ table span, metadata,
@@ -506,7 +509,7 @@ def main(args):
                   'that it would be posted, moving on.')
   try:
     if args.dryrun is False:
-      logger.info('Finished processing selector files, approximately %i '
+      logger.info('Finished processing selector files, approximately %d '
                   'queries to be performed.', selector_queue.qsize())
       if os.path.exists(args.credentials_filepath) is False:
         logger.warn('No credentials for Google appear to exist, next step '
@@ -517,7 +520,7 @@ def main(args):
             args.credentials_filepath, is_headless = args.noauth_local_webserver)
       except external.APIConfigError:
         logger.error('Could not find developer project, please create one in '
-                          'Developer Console to continue. (See README.md)')
+                     'Developer Console to continue. (See README.md)')
         return None
 
       while not selector_queue.empty():
@@ -530,11 +533,11 @@ def main(args):
           # friendly notiication string.
           identifier_string = ', '.join(filter(None, thread_metadata.values()))
 
-          if (external_query_handler.has_result() != True and
-              external_query_handler.has_error() != True):
+          if (not external_query_handler.has_succeeded() and
+              not external_query_handler.has_failed()):
             selector_queue.put(external_query_handler.queue_set)
-          elif (external_query_handler.has_result() != True and
-              external_query_handler.has_error() == True):
+          elif (not external_query_handler.has_succeeded() and
+              external_query_handler.has_failed()):
             logger.debug('Fatal error on %s, moving along.', identifier_string)
           else:
             logger.debug('Successfully retrieved %s.', identifier_string)

@@ -216,7 +216,7 @@ class SelectorFileParserTest(unittest.TestCase):
          iptranslation.IPTranslationStrategySpec('maxmind',
                                                  {'db_snapshots': ['2014-08-04']}))
 
-    for client_country in ["us", "ca", "uk", "au"]:
+    for client_country in ('us', 'ca', 'uk', 'au'):
       selector_copy = copy.copy(selector_base)
       selector_copy.client_country = client_country
       selectors_expected.append(selector_copy)
@@ -295,7 +295,7 @@ class SelectorFileParserTest(unittest.TestCase):
     selector_expected.client_country = 'us'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
-  def testValidInput_v1dot1_notOptionalValuesStillParses(self):
+  def testValidInput_v1dot1_NoOptionalValuesStillParses(self):
     selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",

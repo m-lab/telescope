@@ -81,8 +81,13 @@ class MultiSelector(object):
   def __init__(self):
     self.start_times = None
     self.duration = None
-    self.metrics = [None]
     self.ip_translation_spec = None
+
+    # We use itertools to enumerate a combination of individual selectors from
+    # lists of multiple values. Itertools will not iterate when passed a None
+    # value, so instead we default to a list with a single value of None.
+
+    self.metrics = [None]
     self.client_providers = [None]
     self.client_countries = [None]
     self.sites = [None]
@@ -93,7 +98,7 @@ class MultiSelector(object):
     selector_product = itertools.product(self.start_times,
         self.client_providers, self.client_countries, self.sites, self.metrics)
     for (start_time, client_provider, client_country, site,
-        metric) in selector_product:
+         metric) in selector_product:
       selector = Selector()
       selector.ip_translation_spec = self.ip_translation_spec
       selector.duration = self.duration
@@ -352,4 +357,16 @@ class MultiSelectorJsonEncoder(json.JSONEncoder):
     return encoded_start_times
 
 def _normalize_string_values(field_values):
+  """Normalize string values for passed parameters.
+
+  Normalizes parameters to ensure that they are consistent across queries where
+  factors such as case are should not change the output, and therefore not 
+  require additional Telescope queries.
+
+  Args:
+      field_values: (list) A list of string parameters.
+
+  Returns:
+      list: A list of normalized parameters for building selectors from.
+  """
   return [field_value.lower() for field_value in field_values]

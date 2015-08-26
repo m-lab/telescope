@@ -34,17 +34,35 @@ class UtilsTest(unittest.TestCase):
     self.assertEquals('namesplacesdates.csv', utils.strip_special_chars(r'names\places\dates.csv'))
     self.assertEquals('spaces are okay.csv', utils.strip_special_chars('spaces are okay.csv'))
 
-  def testFilenameBuilder(self):
+  def testFilenameBuilder_CompleteParameterSet(self):
     fake_filepath = utils.build_filename('/tmp/path/',
-                                              'date',
-                                              'duration',
-                                              'site',
-                                              'client_provider',
-                                              'client_country',
-                                              'metric',
-                                              '-fake.txt')
-    expected_filepath = '/tmp/path/date+duration_site_client_country_client_provider_metric-fake.txt'
+                                         '2014-02-01',
+                                         '30d',
+                                         'iad01',
+                                         'comcast',
+                                         'us',
+                                         'download_throughput',
+                                         '-fake.txt')
+    expected_filepath = '/tmp/path/2014-02-01+30d_iad01_us_comcast_download_throughput-fake.txt'
     self.assertEquals(expected_filepath, fake_filepath)
+
+  def testFilenameBuilder_ParameterSetMissingOptionalValues(self):
+    """ Where not specificied in the selector file, the parameter will be passed
+    as none. The None value should be skipped in filename building, so this 
+    unit tests checks that optional parameters that are not defined are properly
+    handled by `build_filename`.
+    """
+    fake_filepath = utils.build_filename('/tmp/path/',
+                                         '2014-02-01',
+                                         '30d',
+                                         None,
+                                         None,
+                                         'us',
+                                         'download_throughput',
+                                         '-fake.txt')
+    expected_filepath = '/tmp/path/2014-02-01+30d_us_download_throughput-fake.txt'
+    self.assertEquals(expected_filepath, fake_filepath)
+
 
 if __name__ == '__main__':
   unittest.main()

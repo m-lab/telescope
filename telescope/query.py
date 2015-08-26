@@ -39,7 +39,7 @@ class BigQueryQueryGenerator(object):
 
     if client_ip_blocks:
       self._add_client_ip_blocks_conditional(client_ip_blocks)
-    if client_country != None:
+    if client_country:
       self._add_client_country_conditional(client_country)
     if server_ips:
       self._add_server_ips_conditional(server_ips)

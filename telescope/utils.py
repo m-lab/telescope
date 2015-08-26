@@ -56,7 +56,7 @@ def build_filename(outpath, date, duration, site, client_provider,
       metric (str): The name of the metric this data represents (e.g.
           download_throughput).
       suffix (str): The appended string such as a note on the file information
-          or the file extension.
+          or the file extension (e.g. '-bigquery.sql').
 
   Returns:
      (str): The generated full pathname of the output file.

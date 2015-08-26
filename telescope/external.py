@@ -341,11 +341,11 @@ class BigQueryCall:
           time_waiting = int((datetime.datetime.utcnow() - started_checking).total_seconds())
 
           if job_collection_state['status']['state'] == 'RUNNING':
-            self.logger.info('Waiting for %s to complete, spent %i seconds so '
+            self.logger.info('Waiting for %s to complete, spent %d seconds so '
                               'far.', notification_identifier, time_waiting)
             time.sleep(10)
           elif job_collection_state['status']['state'] == 'PENDING':
-            self.logger.info('Waiting for %s to submit, spent %i seconds so '
+            self.logger.info('Waiting for %s to submit, spent %d seconds so '
                               'far.', notification_identifier, time_waiting)
             time.sleep(60)
           elif job_collection_state['status']['state'] == 'DONE' and callback_function is not None:
