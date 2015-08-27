@@ -46,25 +46,42 @@ MAX_THREADS_BATCH_MODE = 100
 
 class NoClientNetworkBlocksFound(Exception):
   def __init__(self, provider_name):
-    Exception.__init__(self,
-                       'Could not find IP blocks associated with client provider {client_provider}.'.format(
-                           client_provider = provider_name))
+    Exception.__init__(self, ('Could not find IP blocks associated with client '
+      'provider {client_provider}.').format(client_provider = provider_name))
 
 class MLabServerResolutionFailed(Exception):
   def __init__(self, inner_exception):
-    Exception.__init__(self,
-                       'Failed to resolve M-Lab server IPs: {error_message}'.format(
-                           error_message = inner_exception.message))
+    Exception.__init__(self, ('Failed to resolve M-Lab server IPs: '
+      '{error_message}').format(error_message = inner_exception.message))
 
 class ExternalQueryHandler:
   """ Monitors external jobs in BigQuery and retrieves and processed the
       resulting data when the job completes.
   """
 
-  def __init__(self):
-    self.result = False
-    self.metadata = None
-    self.fatal_error = None
+  def __init__(self, filepath, metadata):
+    """ Inits ExternalQueryHandler ouput and metadata information.
+
+    Args:
+        filepath (str): Where the processed results will be stored.
+        metadata (dict): Metadata on the query for output labels and further
+            processing of received values.
+    """
+    self._metadata = metadata
+    self._filepath = filepath
+
+    self._has_succeeded = False  # Whether the query has returned a result.
+    self._has_failed = False   # Whether the query has received a fatal error.
+
+  @property
+  def has_succeeded(self):
+    """Indicates whether the test has successfully completed."""
+    return self._has_succeeded
+
+  @property
+  def has_failed(self):
+    """Indicates whether the test has encountered a fatal error."""
+    return self._has_failed
 
   def retrieve_data_upon_job_completion(self, job_id, query_object = None):
     """ Waits for a BigQuery job to complete, then retrieves the data, runs
@@ -82,15 +99,14 @@ class ExternalQueryHandler:
           written to file, False otherwise.
     """
     logger = logging.getLogger('telescope')
-    self.result = False
 
     if query_object is not None:
       try:
         bq_query_returned_data = query_object.retrieve_job_data(job_id)
-        logger.debug('Received data, processing according to {metric} metric.'.format(metric = self.metadata['metric']))
+        logger.debug('Received data, processing according to {metric} metric.'.format(metric = self._metadata['metric']))
 
         validation_results = filters.filter_measurements_list(
-            self.metadata['metric'], bq_query_returned_data)
+            self._metadata['metric'], bq_query_returned_data)
         number_kept = len(validation_results)
         number_discarded = len(bq_query_returned_data) - len(validation_results)
         logger.info(("Filtered measurements, kept {number_kept} and discarded " +
@@ -98,22 +114,20 @@ class ExternalQueryHandler:
                                                   number_discarded = number_discarded))
 
         subset_metric_calculations = metrics_math.calculate_results_list(
-            self.metadata['metric'], validation_results)
+            self._metadata['metric'], validation_results)
 
-        write_metric_calculations_to_file(self.metadata['data_filepath'], subset_metric_calculations)
-        self.result = True
+        write_metric_calculations_to_file(self._filepath, subset_metric_calculations)
+        self._has_succeeded = True
       except (ValueError, external.BigQueryJobFailure,
               external.BigQueryCommunicationError) as caught_error:
-        logger.error("Caught {caught_error} for ({site}, {client_provider}, {metric}).".format(
-            caught_error = caught_error, site = self.metadata['site'],
-            client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
+        logger.error(('Caught {caught_error} for ({site}, {client_provider}, '
+          '{metric}, {date}).').format(caught_error=caught_error,
+          **self._metadata))
       except external.TableDoesNotExist:
-        logger.error(("Requested tables for ({site}, {client_provider}, " +
-                      "{metric}) do not exist, moving on.").format( site = self.metadata['site'],
-                          client_provider = self.metadata['client_provider'], metric = self.metadata['metric']))
-        self.fatal_error = True
-    return self.result
-
+        logger.error(('Requested tables for ({site}, {client_provider}, '
+          '{metric}, {date}) do not exist, moving on.').format(**self._metadata))
+        self._has_failed = True
+    return self._has_succeeded
 
 def setup_logger(verbosity_level = 0):
   """ Create and configure application logging mechanism.
@@ -137,19 +151,17 @@ def setup_logger(verbosity_level = 0):
 
 
 def write_metric_calculations_to_file(data_filepath, metric_calculations, should_write_header = False):
-  """ Writes metric data to a file in CSV format.
+  """Writes metric data to a file in CSV format.
 
-      Args:
-        data_filepath (str): File path to which to write data.
+  Args:
+      data_filepath (str): File path to which to write data.
+      metric_calculations (list): A list of dictionaries containing the
+          values of retrieved metrics.
+      should_write_header (bool): Indicates whether the output file should
+          contain a header line to identify each column of data.
 
-        metric_calculations (list): A list of dictionaries containing the
-        values of retrieved metrics.
-
-        should_write_header (bool): Indicates whether the output file should
-        contain a header line to identify each column of data.
-
-      Returns:
-        (bool) True if the file was written successfully, False otherwise.
+  Returns:
+      (bool) True if the file was written successfully, False otherwise.
   """
   logger = logging.getLogger('telescope')
   try:
@@ -161,75 +173,31 @@ def write_metric_calculations_to_file(data_filepath, metric_calculations, should
                                         quotechar='"', quoting=csv.QUOTE_MINIMAL)
         if should_write_header == True:
           data_file_csv.writeheader()
-        data_file_csv.writerows(metric_calculations )
+        data_file_csv.writerows(metric_calculations)
     return True
   except IOError as caught_error:
     if caught_error.errno == 24:
-      logger.error(("When writing raw output, caught {error}, " +
-                      "trying again shortly.").format(error = caught_error))
+      logger.error('When writing raw output, caught %s, trying again shortly.',
+                    caught_error)
       write_metric_calculations_to_file(data_filepath, metric_calculations, should_write_header)
       time.sleep(20)
     else:
-      logger.error(("When writing raw output, caught {error}, " +
-                      "cannot move on.").format(error = caught_error))
+      logger.error('When writing raw output, caught %s, cannot move on.',
+                    caught_error)
   except Exception as caught_error:
-    logger.error(("When writing raw output, caught {error}, " +
-                    "cannot move on.").format(error = caught_error))
+    logger.error('When writing raw output, caught %s, cannot move on.',
+                  caught_error)
   return False
 
-
-def build_filename(resource_type, outpath, date, duration, site, client_provider, metric):
-  """ Builds an output filename that reflects the data being written to file.
-
-      Args:
-        resource_type (str): Indicates what type of data will be stored in the
-        file.
-
-        outpath (str): Indicates the path (excluding filename) where the file
-        will be written.
-
-        date (str): A string indicating the start time of the data window the
-        file represents.
-
-        duration (str): A string indicating the duration of the data window the
-        file represents.
-
-        site (str): The name of the M-Lab site from which the data was collected
-        (e.g. lga01)
-
-        client_provider (str): The name of the client provider associated with
-        the test results.
-
-        metric (str): The name of the metric this data represents (e.g.
-        download_throughput).
-
-     Returns:
-       (str): The generated full pathname of the output file.
-  """
-  extensions = { 'data': 'raw.csv', 'bigquery': 'bigquery.sql'}
-  filename_format = "{date}+{duration}_{site}_{client_provider}_{metric}-{extension}"
-
-  filename = filename_format.format(date = date,
-                                    duration = duration,
-                                    site = site,
-                                    client_provider = client_provider,
-                                    metric = metric,
-                                    extension = extensions[resource_type])
-  filename = utils.strip_special_chars(filename)
-  filepath = os.path.join(outpath, filename)
-  return filepath
-
-
 def write_bigquery_to_file(bigquery_filepath, query_string):
-  """ Writes BigQuery query string to a file.
+  """Writes BigQuery query string to a file.
 
-      Args:
-        bigquery_filepath (str): Output file path.
+  Args:
+      bigquery_filepath (str): Output file path.
+      query_string (str): BigQuery query string to write to file.
 
-        query_string (str): BigQuery query string to write to file.
-
-      Returns:
-        (bool) True if query was written to file successfully, False otherwise.
+  Returns:
+      (bool) True if query was written to file successfully, False otherwise.
   """
   logger = logging.getLogger('telescope')
   try:
@@ -237,7 +205,7 @@ def write_bigquery_to_file(bigquery_filepath, query_string):
       bigquery_file_raw.write(query_string)
     return True
   except Exception as caught_error:
-    logger.error("When writing bigquery, caught {error}.".format(error = caught_error))
+    logger.error('When writing bigquery, caught %s.', caught_error)
 
   return False
 
@@ -245,13 +213,13 @@ def write_bigquery_to_file(bigquery_filepath, query_string):
 def selectors_from_files(selector_files):
   """ Parses Selector objects from a list of selector files.
 
-      N.B.: Parsing errors are logged, but do not cause the function to fail.
+  N.B.: Parsing errors are logged, but do not cause the function to fail.
 
-      Args:
-        slector_files (list): A list of filenames of selector files.
+  Args:
+      selector_files (list): A list of filenames of selector files.
 
-      Returns:
-        (list): A list of Selector objects that were successfully parsed.
+  Returns:
+      (list): A list of Selector objects that were successfully parsed.
   """
   logger = logging.getLogger('telescope')
   parser = selector.SelectorFileParser()
@@ -300,25 +268,28 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
   start_time_datetime = selector.start_time
   end_time_datetime = start_time_datetime + datetime.timedelta(seconds = selector.duration)
 
-  network_lookup_found_blocks = ip_translator.find_ip_blocks(
-      selector.client_provider)
-  if len(network_lookup_found_blocks) == 0:
-    raise NoClientNetworkBlocksFound(selector.client_provider)
+  client_ip_blocks = []
+  if selector.client_provider:
+    client_ip_blocks = ip_translator.find_ip_blocks(selector.client_provider)
+    if not len(client_ip_blocks):
+      raise NoClientNetworkBlocksFound(selector.client_provider)
 
   server_ips = []
-  try:
-    for retrieved_site_ip in mlab_site_resolver.get_site_ndt_ips(selector.site):
-      server_ips.append(retrieved_site_ip)
-      logger.debug('Found IP for {site} of {site_ip}.'.format(
-          site=selector.site, site_ip=retrieved_site_ip))
-  except Exception as caught_error:
-    raise MLabServerResolutionFailed(caught_error)
+  if selector.site:
+    try:
+      for retrieved_site_ip in mlab_site_resolver.get_site_ndt_ips(selector.site):
+        server_ips.append(retrieved_site_ip)
+        logger.debug('Found IP for {site} of {site_ip}.'.format(
+            site=selector.site, site_ip=retrieved_site_ip))
+    except Exception as caught_error:
+      raise MLabServerResolutionFailed(caught_error)
 
   query_generator = query.BigQueryQueryGenerator(start_time_datetime,
                                                  end_time_datetime,
                                                  selector.metric,
-                                                 server_ips,
-                                                 network_lookup_found_blocks)
+                                                 server_ips=server_ips,
+                                                 client_ip_blocks=client_ip_blocks,
+                                                 client_country=selector.client_country)
   return (query_generator.query(), query_generator.table_span())
 
 def duration_to_string(duration_seconds):
@@ -407,7 +378,8 @@ def process_selector_queue(selector_queue, google_auth_config,
   thread_monitor = []
 
   while not selector_queue.empty():
-    bq_query_string, bq_table_span, thread_metadata, has_been_run = selector_queue.get(False)
+    (bq_query_string, bq_table_span, thread_metadata, data_filepath,
+      has_been_run) = selector_queue.get(False)
 
     """
       Enforce concurrent rate limit and allow fine-grain controls over batch
@@ -418,11 +390,11 @@ def process_selector_queue(selector_queue, google_auth_config,
     if batchmode == 'all':
       is_batched_query = True
     elif batchmode == 'automatic' and bq_table_span > max_tables_without_batch:
-      logger.info(("Found {0} tables, when the maximum for non-batched " +
-                    "mode is {1}, setting query to batched mode (this will " +
-                    "increase the amount of time but lower failure rate). " +
-                    "This behavior can be controled with the --batchmode " +
-                    "argument.").format(bq_table_span, max_tables_without_batch))
+      logger.info(('Found {0} tables, when the maximum for non-batched '
+                   'mode is {1}, setting query to batched mode (this will '
+                   'increase the amount of time but lower failure rate). '
+                   'This behavior can be controled with the --batchmode '
+                   'argument.').format(bq_table_span, max_tables_without_batch))
       is_batched_query = True
     else:
       is_batched_query = False
@@ -432,27 +404,28 @@ def process_selector_queue(selector_queue, google_auth_config,
       bq_job_id = bq_query_call.run_asynchronous_query(bq_query_string, batch_mode = is_batched_query)
     except (SSLError, external.BigQueryJobFailure,
             external.BigQueryCommunicationError) as caught_error:
-      logger.warn(("Caught request error {caught_error} on query, cooling " +
-                    "down for a minute.").format(caught_error = caught_error))
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
+      logger.warn('Caught request error %s on query, cooling down for a '
+                  'minute.', caught_error)
+      selector_queue.put((bq_query_string, bq_table_span, thread_metadata, data_filepath, True))
       time.sleep(60)
       bq_job_id = None
 
     if bq_job_id is None:
-      logger.warn(("No job id returned for {site} of {metric} (concurrent threads: " +
-                    "{thread_count}).").format(thread_count = threading.activeCount(), **thread_metadata))
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, True) )
+      logger.warn(('No job id returned for {site} of {metric} (concurrent '
+                  'threads: {thread_count}).').format(
+                    thread_count = threading.activeCount(), **thread_metadata))
+      selector_queue.put((bq_query_string, bq_table_span, thread_metadata, data_filepath, True))
       continue
 
-    external_query_handler = ExternalQueryHandler()
-    external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, True)
-    external_query_handler.metadata = thread_metadata
+    external_query_handler = ExternalQueryHandler(data_filepath, thread_metadata)
+    external_query_handler.queue_set = (bq_query_string, bq_table_span, thread_metadata, data_filepath, True)
+
     new_thread = threading.Thread(target=bq_query_call.monitor_query_queue,
                                     args = (bq_job_id, thread_metadata, None,
                                             external_query_handler.retrieve_data_upon_job_completion))
     new_thread.daemon = True
     new_thread.start()
-    thread_monitor.append( (new_thread, external_query_handler) )
+    thread_monitor.append((new_thread, external_query_handler))
 
     if is_batched_query:
       concurrent_thread_limit = MAX_THREADS_BATCH_MODE
@@ -480,22 +453,25 @@ def main(args):
                       'duration': duration_to_string(selector.duration),
                       'site': selector.site,
                       'client_provider': selector.client_provider,
-                      'metric': selector.metric,
+                      'client_country': selector.client_country,
+                      'metric': selector.metric
                     }
-    thread_metadata['data_filepath'] = build_filename('data',
-                                                      args.output,
-                                                      thread_metadata['date'],
-                                                      thread_metadata['duration'],
-                                                      thread_metadata['site'],
-                                                      thread_metadata['client_provider'],
-                                                      thread_metadata['metric'])
+    data_filepath = utils.build_filename(args.output,
+                                         thread_metadata['date'],
+                                         thread_metadata['duration'],
+                                         thread_metadata['site'],
+                                         thread_metadata['client_provider'],
+                                         thread_metadata['client_country'],
+                                         thread_metadata['metric'],
+                                         '-raw.csv')
     if (args.ignorecache is False and
-        utils.check_for_valid_cache(thread_metadata['data_filepath']) is True):
-      logger.info(('Raw data file found ({data_filepath}), assuming this is cached copy of same data and ' +
-                   'moving off. Use --ignorecache to suppress this behavior.').format(**thread_metadata))
+        utils.check_for_valid_cache(data_filepath) is True):
+      logger.info(('Raw data file found ({0}), assuming this is '
+                   'cached copy of same data and moving off. Use '
+                   '--ignorecache to suppress this behavior.').format(data_filepath))
       continue
 
-    logger.debug('Did not find existing data file: {data_filepath}'.format(**thread_metadata))
+    logger.debug('Did not find existing data file: %s', data_filepath)
     logger.debug(('Generating Query for subset of {site}, {client_provider}, {date}, ' +
                   '{duration}.').format(**thread_metadata))
 
@@ -513,13 +489,14 @@ def main(args):
       continue
 
     if args.savequery == True:
-      bigquery_filepath = build_filename('bigquery',
-                                         args.output,
-                                         thread_metadata['date'],
-                                         thread_metadata['duration'],
-                                         thread_metadata['site'],
-                                         thread_metadata['client_provider'],
-                                         thread_metadata['metric'])
+      bigquery_filepath = utils.build_filename(args.output,
+                                               thread_metadata['date'],
+                                               thread_metadata['duration'],
+                                               thread_metadata['site'],
+                                               thread_metadata['client_provider'],
+                                               thread_metadata['client_country'],
+                                               thread_metadata['metric'],
+                                               '-bigquery.sql')
       write_bigquery_to_file(bigquery_filepath, bq_query_string)
     if args.dryrun is False:
       """ Offer Queue a tuple of the BQ statement, BQ table span, metadata,
@@ -527,24 +504,24 @@ def main(args):
           run the query thus far (failed queries are pushed back to the end
           of the loop).
       """
-      selector_queue.put( (bq_query_string, bq_table_span, thread_metadata, False) )
+      selector_queue.put((bq_query_string, bq_table_span, thread_metadata, data_filepath, False))
     else:
-      logger.warn('Dry run flag caught, built query and reached the point that it would be posted, ' +
-                  'moving on.')
+      logger.warn('Dry run flag caught, built query and reached the point '
+                  'that it would be posted, moving on.')
   try:
     if args.dryrun is False:
-      logger.info(("Finished processing selector files, approximately {0} queries " +
-                    "to be performed.").format(selector_queue.qsize()))
+      logger.info('Finished processing selector files, approximately %d '
+                  'queries to be performed.', selector_queue.qsize())
       if os.path.exists(args.credentials_filepath) is False:
-        logger.warn('No credentials for Google appear to exist, next step will be an authentication ' +
-                    'mechanism for its API.')
+        logger.warn('No credentials for Google appear to exist, next step '
+                    'will be an authentication mechanism for its API.')
 
       try:
         google_auth_config = external.GoogleAPIAuth(
             args.credentials_filepath, is_headless = args.noauth_local_webserver)
       except external.APIConfigError:
-        logger.error("Could not find developer project, please create one in " +
-                          "Developer Console to continue. (See README.md)")
+        logger.error('Could not find developer project, please create one in '
+                     'Developer Console to continue. (See README.md)')
         return None
 
       while not selector_queue.empty():
@@ -553,29 +530,32 @@ def main(args):
 
         for (existing_thread, external_query_handler) in thread_monitor:
           existing_thread.join()
-          if external_query_handler.result != True and external_query_handler.fatal_error != True:
-            selector_queue.put( external_query_handler.queue_set )
-          elif external_query_handler.result != True and external_query_handler.fatal_error == True:
-            logger.debug(('Fatal error on {site}, {client_provider}, {date}, ' +
-                '{duration}, moving along.').format(**thread_metadata))
+          # Join together all defined attributes of thread_metadata for a user
+          # friendly notiication string.
+          identifier_string = ', '.join(filter(None, thread_metadata.values()))
+
+          if (not external_query_handler.has_succeeded and
+              not external_query_handler.has_failed):
+            selector_queue.put(external_query_handler.queue_set)
+          elif (external_query_handler.has_failed):
+            logger.debug('Fatal error on %s, moving along.', identifier_string)
           else:
-            logger.debug(('Successfully retrieved {site}, {client_provider}, {date}, ' +
-                          '{duration}.').format(**thread_metadata))
+            logger.debug('Successfully retrieved %s.', identifier_string)
 
   except KeyboardInterrupt:
-    logger.error("Caught Interruption, Shutting Down Now.")
+    logger.error('Caught Interruption, Shutting Down Now.')
 
   return False
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   parser = argparse.ArgumentParser(
       prog='M-Lab Telescope',
       formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
   parser.add_argument('selector_in', nargs='+', default=None,
                         help='Selector JSON datafile(s) to parse.')
-  parser.add_argument('-v', '--verbosity', action="count",
-                        help="variable output verbosity (e.g., -vv is more than -v)")
+  parser.add_argument('-v', '--verbosity', action='count',
+                        help='variable output verbosity (e.g., -vv is more than -v)')
   parser.add_argument('-o', '--output', default='processed/',
                         help='Output file path. If the folder does not exist, it will be created.',
                         type=utils.create_directory_if_not_exists)

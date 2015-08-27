@@ -45,6 +45,7 @@ class SelectorFileParserTest(unittest.TestCase):
     self.assertDictEqual(selector_expected.ip_translation_spec.params, selector_actual.ip_translation_spec.params)
     self.assertEqual(selector_expected.site, selector_actual.site)
     self.assertEqual(selector_expected.client_provider, selector_actual.client_provider)
+    self.assertEqual(selector_expected.client_country, selector_actual.client_country)
 
   def assertParsedSelectorsMatch(self, selectors_expected, selector_file_contents):
     selectors_actual = self.parse_file_contents(selector_file_contents)
@@ -58,7 +59,7 @@ class SelectorFileParserTest(unittest.TestCase):
   def assertParsedSingleSelectorMatches(self, selector_expected, selector_file_contents):
     self.assertParsedSelectorsMatch([selector_expected], selector_file_contents)
 
-  def testDeprecatedFileFormats(self):
+  def testFailsParseForDeprecatedFileFormats(self):
     selector_file_contents = """{
            "file_format_version": 1,
            "duration": "30d",
@@ -77,9 +78,9 @@ class SelectorFileParserTest(unittest.TestCase):
               }
            ]
         }"""
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+    self.assertRaises(selector.SelectorParseError, self.parse_file_contents, selector_file_contents)
 
-  def testDeprecatedSubsetFunction(self):
+  def testFailsParseForv1_1WithDeprecatedSubsetFunction(self):
     selector_file_contents = """{
               "file_format_version": 1.1,
               "duration": "30d",
@@ -103,9 +104,9 @@ class SelectorFileParserTest(unittest.TestCase):
               }
               ]
           }"""
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+    self.assertRaises(selector.SelectorParseError, self.parse_file_contents, selector_file_contents)
 
-  def testValidInput_v1dot1_Simple(self):
+  def testSuccessfulParseOfValidv1_1FileWithAllOptionalFieldsDefined(self):
     selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",
@@ -118,6 +119,7 @@ class SelectorFileParserTest(unittest.TestCase):
             },
             "sites": ["lga02"],
             "client_providers": ["comcast"],
+            "client_countries": ["us"],
             "start_times": ["2014-02-01T00:00:00Z"]
         }"""
     selector_expected = selector.Selector()
@@ -129,6 +131,7 @@ class SelectorFileParserTest(unittest.TestCase):
                                                  {'db_snapshots': ['2014-08-04']}))
     selector_expected.site = 'lga02'
     selector_expected.client_provider = 'comcast'
+    selector_expected.client_country = 'us'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
   def testValidInput_v1dot1_Complex(self):
@@ -167,7 +170,154 @@ class SelectorFileParserTest(unittest.TestCase):
 
     self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
 
-  def testInvalidJson(self):
+  def testValidInput_v1dot1_Simple_NoLocationValues(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testValidInput_v1dot1_Simple_CountriesCaseInsensitivity(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "start_times": ["2014-02-01T00:00:00Z"],
+            "client_countries": ["us", "Ca", "uK", "AU"]
+        }"""
+
+    selectors_expected = []
+    selector_base = selector.Selector()
+    selector_base.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_base.duration = 30 * 24 * 60 * 60
+    selector_base.metric = "average_rtt"
+    selector_base.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+
+    for client_country in ('us', 'ca', 'uk', 'au'):
+      selector_copy = copy.copy(selector_base)
+      selector_copy.client_country = client_country
+      selectors_expected.append(selector_copy)
+
+    self.assertParsedSelectorsMatch(selectors_expected, selector_file_contents)
+
+  def testValidInput_v1dot1_Simple_SingleLocationValues_onlySites(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "sites": ["lga02"],
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    selector_expected.site = 'lga02'
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testValidInput_v1dot1_Simple_SingleLocationValues_onlyClientProviders(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "client_providers": ["comcast"],
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    selector_expected.client_provider = 'comcast'
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testValidInput_v1dot1_Simple_SingleLocationValues_onlyClientCountries(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "client_countries": ["us"],
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    selector_expected.client_country = 'us'
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testValidInput_v1dot1_NoOptionalValuesStillParses(self):
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testFailsParseForInvalidJson(self):
     selector_file_contents = """{
    "file_format_version": 1.1,
    "duration": "30d",
@@ -183,7 +333,7 @@ class SelectorFileParserTest(unittest.TestCase):
    "start_times": ["2014-02-01T00:00:00Z"]
 """
     # The final closing curly brace is missing, so this should fail
-    self.assertRaises(ValueError, self.parse_file_contents, selector_file_contents)
+    self.assertRaises(selector.SelectorParseError, self.parse_file_contents, selector_file_contents)
 
 
 class MultiSelectorJsonEncoderTest(unittest.TestCase):
@@ -201,6 +351,7 @@ class MultiSelectorJsonEncoderTest(unittest.TestCase):
     s.duration = 45
     s.site_names = ['mia01']
     s.client_providers = ['twc']
+    s.client_countries = ['us']
     s.metrics = ['upload_throughput']
     s.ip_translation_spec = (iptranslation.IPTranslationStrategySpec(
         'maxmind', {'db_snapshots': ['2015-02-05']}))
@@ -218,6 +369,7 @@ class MultiSelectorJsonEncoderTest(unittest.TestCase):
   },
   "sites": ["mia01"],
   "client_providers": ["twc"],
+  "client_countries": ["us"],
   "start_times": ["2015-04-02T10:27:34Z"]
 }"""
     encoded_actual = selector.MultiSelectorJsonEncoder().encode(s)

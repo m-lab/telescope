@@ -58,3 +58,6 @@ class FiltersTest(unittest.TestCase):
     filtered_data_tuple = tuple(filters.filter_measurements_list(
         'upload_throughput', [fake_good_data]))
     self.assertEqual(good_data_tuple, filtered_data_tuple)
+
+if __name__ == '__main__':
+  unittest.main()
