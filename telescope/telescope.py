@@ -75,12 +75,12 @@ class ExternalQueryHandler:
 
   @property
   def has_succeeded(self):
-    """ Get whether the test has successfully completed. """
+    """Indicates whether the test has successfully completed."""
     return self._has_succeeded
 
   @property
   def has_failed(self):
-    """ Get whether the test has encountered a fatal error. """
+    """Indicates whether the test has encountered a fatal error."""
     return self._has_failed
 
   def retrieve_data_upon_job_completion(self, job_id, query_object = None):
@@ -378,7 +378,8 @@ def process_selector_queue(selector_queue, google_auth_config,
   thread_monitor = []
 
   while not selector_queue.empty():
-    (bq_query_string, bq_table_span, thread_metadata, data_filepath, has_been_run) = selector_queue.get(False)
+    (bq_query_string, bq_table_span, thread_metadata, data_filepath,
+      has_been_run) = selector_queue.get(False)
 
     """
       Enforce concurrent rate limit and allow fine-grain controls over batch
@@ -533,11 +534,10 @@ def main(args):
           # friendly notiication string.
           identifier_string = ', '.join(filter(None, thread_metadata.values()))
 
-          if (not external_query_handler.has_succeeded() and
-              not external_query_handler.has_failed()):
+          if (not external_query_handler.has_succeeded and
+              not external_query_handler.has_failed):
             selector_queue.put(external_query_handler.queue_set)
-          elif (not external_query_handler.has_succeeded() and
-              external_query_handler.has_failed()):
+          elif (external_query_handler.has_failed):
             logger.debug('Fatal error on %s, moving along.', identifier_string)
           else:
             logger.debug('Successfully retrieved %s.', identifier_string)

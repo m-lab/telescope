@@ -47,20 +47,22 @@ class UtilsTest(unittest.TestCase):
     self.assertEquals(expected_filepath, fake_filepath)
 
   def testFilenameBuilder_ParameterSetMissingOptionalValues(self):
-    """ Where not specificied in the selector file, the parameter will be passed
-    as none. The None value should be skipped in filename building, so this 
-    unit tests checks that optional parameters that are not defined are properly
+    """Tests that omitted options are properly handled in building of filenames.
+    
+    Where not specificied in the selector file, the parameter will be passed
+    as None. The None value should be skipped in filename building, so this
+    unit test checks that optional parameters that are not defined are properly
     handled by `build_filename`.
     """
     fake_filepath = utils.build_filename('/tmp/path/',
-                                         '2014-02-01',
-                                         '30d',
+                                         '2015-02-01',
+                                         '31d',
                                          None,
                                          None,
-                                         'us',
-                                         'download_throughput',
-                                         '-fake.txt')
-    expected_filepath = '/tmp/path/2014-02-01+30d_us_download_throughput-fake.txt'
+                                         'ca',
+                                         'minimum_rtt',
+                                         '-bigquery.sql')
+    expected_filepath = '/tmp/path/2015-02-01+31d_ca_minimum_rtt-bigquery.sql'
     self.assertEquals(expected_filepath, fake_filepath)
 
 
