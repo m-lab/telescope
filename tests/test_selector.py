@@ -352,13 +352,15 @@ class SelectorFileParserTest(unittest.TestCase):
             "start_times": ["2014-02-01T00:00:00Z"]
         }"""
     selector_expected = selector.Selector()
-    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.start_time = utils.make_datetime_utc_aware(
+        datetime.datetime(2014, 2, 1))
     selector_expected.duration = 30 * 24 * 60 * 60
     selector_expected.metric = 'average_rtt'
     selector_expected.ip_translation_spec = (
-         iptranslation.IPTranslationStrategySpec('maxmind',
-                                                 {'db_snapshots': ['2014-08-04']}))
-    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+        iptranslation.IPTranslationStrategySpec('maxmind',
+                                                {'db_snapshots': ['2014-08-04']}))
+    self.assertParsedSingleSelectorMatches(selector_expected,
+                                           selector_file_contents)
 
   def testFailsParseForInvalidJson(self):
     selector_file_contents = """{
