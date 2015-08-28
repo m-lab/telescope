@@ -59,7 +59,7 @@ class Selector(object):
   def __repr__(self):
     return ('<Selector Object (site: %s, client_provider: %s, client_country:'
             '%s, metric: %s, start_time: %s, duration: %s)>' % (self.site,
-              self.client_provider, self.metric,
+              self.client_provider, self.client_country, self.metric,
               self.start_time.strftime("%Y-%m-%d"), self.duration))
 
 class MultiSelector(object):
@@ -163,20 +163,23 @@ class SelectorFileParser(object):
       list: A list of parsed Selector objects.
     """
     multi_selector = MultiSelector()
-    multi_selector.start_times = self._parse_start_times(
-        selector_json['start_times'])
-    multi_selector.metrics = selector_json['metrics']
     multi_selector.duration = self._parse_duration(selector_json['duration'])
     multi_selector.ip_translation_spec = self._parse_ip_translation(
         selector_json['ip_translation'])
 
-    if 'client_providers' in selector_json:
+    multi_selector.start_times = self._parse_start_times(
+        selector_json['start_times'])
+    multi_selector.metrics = selector_json['metrics']
+
+    if ('client_providers' in selector_json and
+        selector_json['client_providers']):
       multi_selector.client_providers = _normalize_string_values(
                                               selector_json['client_providers'])
-    if 'client_countries' in selector_json:
+    if ('client_countries' in selector_json and
+        selector_json['client_countries']):
       multi_selector.client_countries = _normalize_string_values(
                                               selector_json['client_countries'])
-    if 'sites' in selector_json:
+    if 'sites' in selector_json and selector_json['sites']:
       multi_selector.sites = _normalize_string_values(selector_json['sites'])
 
     return multi_selector.split()
@@ -290,6 +293,12 @@ class SelectorFileValidator(object):
       if (('metrics' not in selector_dict) or
           (type(selector_dict['metrics']) != list)):
         raise SelectorParseError('MetricsRequiresList')
+
+      if not selector_dict['start_times']:
+        raise SelectorParseError('List of start times must be non-empty.')
+
+      if not selector_dict['metrics']:
+        raise SelectorParseError('List of metrics must be non-empty.')
 
       if 'client_countries' in selector_dict:
         for client_country in selector_dict['client_countries']:
