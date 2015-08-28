@@ -110,6 +110,7 @@ class MultiSelector(object):
       selectors.append(selector)
     return selectors
 
+
 class SelectorFileParser(object):
   """Parser for Telescope selector files.
 
@@ -166,26 +167,19 @@ class SelectorFileParser(object):
     multi_selector.ip_translation_spec = self._parse_ip_translation(
         selector_json['ip_translation'])
 
-    if len(selector_json['start_times']) > 0:
-      multi_selector.start_times = self._parse_start_times(
-          selector_json['start_times'])
-    else:
-      raise SelectorParseError('MissingRequiredValues')
-
-    if len(selector_json['metrics']) > 0:
-      multi_selector.metrics = selector_json['metrics']
-    else:
-      raise SelectorParseError('MissingRequiredValues')
+    multi_selector.start_times = self._parse_start_times(
+        selector_json['start_times'])
+    multi_selector.metrics = selector_json['metrics']
 
     if ('client_providers' in selector_json and
-        len(selector_json['client_providers']) > 0):
+        selector_json['client_providers']):
       multi_selector.client_providers = _normalize_string_values(
                                               selector_json['client_providers'])
     if ('client_countries' in selector_json and
-        len(selector_json['client_countries']) > 0):
+        selector_json['client_countries']):
       multi_selector.client_countries = _normalize_string_values(
                                               selector_json['client_countries'])
-    if 'sites' in selector_json and len(selector_json['sites']) > 0:
+    if 'sites' in selector_json and selector_json['sites']:
       multi_selector.sites = _normalize_string_values(selector_json['sites'])
 
     return multi_selector.split()
@@ -299,6 +293,12 @@ class SelectorFileValidator(object):
       if (('metrics' not in selector_dict) or
           (type(selector_dict['metrics']) != list)):
         raise SelectorParseError('MetricsRequiresList')
+
+      if not selector_dict['start_times']:
+        raise SelectorParseError('List of start times must be non-empty.')
+
+      if not selector_dict['metrics']:
+        raise SelectorParseError('List of metrics must be non-empty.')
 
       if 'client_countries' in selector_dict:
         for client_country in selector_dict['client_countries']:

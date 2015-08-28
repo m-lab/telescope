@@ -296,7 +296,7 @@ class SelectorFileParserTest(unittest.TestCase):
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
   def testValidInput_v1dot1_EmptyListValue_OptionalParameter(self):
-    """An empty list on an optional parameter is properly handled as if None."""
+    """Empty list on optional parameter (client_countries) is handled as None"""
     selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",
@@ -321,7 +321,7 @@ class SelectorFileParserTest(unittest.TestCase):
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
   def testValidInput_v1dot1_EmptyListValue_RequiredParameter(self):
-    """Whether an empty list on a required parameter throws an error."""
+    """An empty list for the required "metrics" field should raise an error."""
     selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",
