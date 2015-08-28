@@ -295,6 +295,49 @@ class SelectorFileParserTest(unittest.TestCase):
     selector_expected.client_country = 'us'
     self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
 
+  def testValidInput_v1dot1_EmptyListValue_OptionalParameter(self):
+    """An empty list on an optional parameter is properly handled as if None."""
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": ["average_rtt"],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "client_countries": [],
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    selector_expected = selector.Selector()
+    selector_expected.start_time = utils.make_datetime_utc_aware(datetime.datetime(2014, 2, 1))
+    selector_expected.duration = 30 * 24 * 60 * 60
+    selector_expected.metric = 'average_rtt'
+    selector_expected.ip_translation_spec = (
+         iptranslation.IPTranslationStrategySpec('maxmind',
+                                                 {'db_snapshots': ['2014-08-04']}))
+    selector_expected.client_country = None
+    self.assertParsedSingleSelectorMatches(selector_expected, selector_file_contents)
+
+  def testValidInput_v1dot1_EmptyListValue_RequiredParameter(self):
+    """Whether an empty list on a required parameter throws an error."""
+    selector_file_contents = """{
+            "file_format_version": 1.1,
+            "duration": "30d",
+            "metrics": [],
+            "ip_translation":{
+                "strategy":"maxmind",
+                "params":{
+                    "db_snapshots":["2014-08-04"]
+                }
+            },
+            "client_countries": ["us"],
+            "start_times": ["2014-02-01T00:00:00Z"]
+        }"""
+    self.assertRaises(selector.SelectorParseError, self.parse_file_contents,
+                      selector_file_contents)
+
   def testValidInput_v1dot1_NoOptionalValuesStillParses(self):
     selector_file_contents = """{
             "file_format_version": 1.1,

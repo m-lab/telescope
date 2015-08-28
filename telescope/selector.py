@@ -59,7 +59,7 @@ class Selector(object):
   def __repr__(self):
     return ('<Selector Object (site: %s, client_provider: %s, client_country:'
             '%s, metric: %s, start_time: %s, duration: %s)>' % (self.site,
-              self.client_provider, self.metric,
+              self.client_provider, self.client_country, self.metric,
               self.start_time.strftime("%Y-%m-%d"), self.duration))
 
 class MultiSelector(object):
@@ -109,7 +109,6 @@ class MultiSelector(object):
       selector.metric = metric
       selectors.append(selector)
     return selectors
-
 
 class SelectorFileParser(object):
   """Parser for Telescope selector files.
@@ -163,20 +162,30 @@ class SelectorFileParser(object):
       list: A list of parsed Selector objects.
     """
     multi_selector = MultiSelector()
-    multi_selector.start_times = self._parse_start_times(
-        selector_json['start_times'])
-    multi_selector.metrics = selector_json['metrics']
     multi_selector.duration = self._parse_duration(selector_json['duration'])
     multi_selector.ip_translation_spec = self._parse_ip_translation(
         selector_json['ip_translation'])
 
-    if 'client_providers' in selector_json:
+    if len(selector_json['start_times']) > 0:
+      multi_selector.start_times = self._parse_start_times(
+          selector_json['start_times'])
+    else:
+      raise SelectorParseError('MissingRequiredValues')
+
+    if len(selector_json['metrics']) > 0:
+      multi_selector.metrics = selector_json['metrics']
+    else:
+      raise SelectorParseError('MissingRequiredValues')
+
+    if ('client_providers' in selector_json and
+        len(selector_json['client_providers']) > 0):
       multi_selector.client_providers = _normalize_string_values(
                                               selector_json['client_providers'])
-    if 'client_countries' in selector_json:
+    if ('client_countries' in selector_json and
+        len(selector_json['client_countries']) > 0):
       multi_selector.client_countries = _normalize_string_values(
                                               selector_json['client_countries'])
-    if 'sites' in selector_json:
+    if 'sites' in selector_json and len(selector_json['sites']) > 0:
       multi_selector.sites = _normalize_string_values(selector_json['sites'])
 
     return multi_selector.split()
