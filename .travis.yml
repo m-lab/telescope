@@ -7,3 +7,5 @@ install:
     - pip install -r test-requirements.txt
 # Run unit tests
 script: python -m unittest discover
+
+sudo: false
