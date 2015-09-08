@@ -394,7 +394,7 @@ class MultiSelectorJsonEncoderTest(unittest.TestCase):
     s = selector.MultiSelector()
     s.start_times = [datetime.datetime(2015, 4, 2, 10, 27, 34)]
     s.duration = 45
-    s.site_names = ['mia01']
+    s.sites = ['mia01']
     s.client_providers = ['twc']
     s.client_countries = ['us']
     s.metrics = ['upload_throughput']
@@ -428,7 +428,7 @@ class MultiSelectorJsonEncoderTest(unittest.TestCase):
         datetime.datetime(2015, 4, 15, 0, 0, 0),
         ]
     s.duration = 7
-    s.site_names = ['iad01', 'lga06', 'mia01', 'nuq03']
+    s.sites = ['iad01', 'lga06', 'mia01', 'nuq03']
     s.client_providers = ['comcast', 'twc', 'verizon']
     s.metrics = ['download_throughput', 'upload_throughput', 'minimum_rtt']
     s.ip_translation_spec = (iptranslation.IPTranslationStrategySpec(
