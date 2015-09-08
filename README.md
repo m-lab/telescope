@@ -1,5 +1,10 @@
 **Measurement Lab: Telescope**
 
+[![Build
+Status](https://travis-ci.org/m-lab/telescope.svg?branch=master)](https://travis-ci.org/m-lab/telescope)
+[![Coverage
+Status](https://coveralls.io/repos/m-lab/telescope/badge.svg?branch=master&service=github)](https://coveralls.io/github/m-lab/telescope?branch=master)
+
 **Dependencies**
 
 ***Packages***
