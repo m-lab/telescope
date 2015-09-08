@@ -76,7 +76,7 @@ class MultiSelector(object):
        how to translate the IP address information.
      client_providers: (list) List of string names of providers in the child
        Selectors.
-     site_names: (list) List of M-Lab sites in the child Selectors..
+     sites: (list) List of M-Lab sites in the child Selectors..
   """
   def __init__(self):
     self.start_times = None
@@ -340,8 +340,8 @@ class MultiSelectorJsonEncoder(json.JSONEncoder):
         'start_times': self._encode_start_times(selector.start_times)
         }
 
-    if selector.site_names != [None]:
-        base_selector['sites'] = selector.site_names
+    if selector.sites != [None]:
+        base_selector['sites'] = selector.sites
     if selector.client_countries != [None]:
         base_selector['client_countries'] = selector.client_countries
     if selector.client_providers != [None]:
