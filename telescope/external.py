@@ -15,9 +15,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import datetime
 import httplib2
 import logging
-import datetime
+import os
 import time
 
 from ssl import SSLError
@@ -86,7 +87,7 @@ class GoogleAPIAuthConfig:
 
 class GoogleAPIAuth:
 
-  def __init__(self, credentials_filepath, is_headless = False):
+  def __init__(self, credentials_filepath, is_headless=False):
     self.logger = logging.getLogger('telescope')
     self.credentials_filepath = credentials_filepath
     self._set_headless_mode(is_headless)
@@ -97,8 +98,10 @@ class GoogleAPIAuth:
 
   def authenticate_with_google(self):
 
-    flow = flow_from_clientsecrets('client_secrets.json',
-                                   scope='https://www.googleapis.com/auth/bigquery')
+    flow = flow_from_clientsecrets(
+        os.path.join(os.path.dirname(__file__),
+                     'resources/client_secrets.json'),
+        scope='https://www.googleapis.com/auth/bigquery')
     storage = Storage(self.credentials_filepath)
     credentials = storage.get()
 
@@ -262,7 +265,7 @@ class BigQueryJobResultCollector(object):
           fields, [result_value['v'] for result_value in results_row['f']]))
       parsed_rows.append(parsed_row)
 
-    if results_response.has_key('pageToken'):
+    if 'pageToken' in results_response:
       page_token = results_response['pageToken']
     else:
       page_token = None
@@ -287,7 +290,7 @@ class BigQueryCall:
         self.authenticated_service.jobs(), self.project_id)
     return result_collector.collect_results(job_id)
 
-  def run_asynchronous_query(self, query_string, batch_mode = False):
+  def run_asynchronous_query(self, query_string, batch_mode=False):
     job_reference_id = None
 
     if self.project_id is None:
@@ -296,7 +299,7 @@ class BigQueryCall:
 
     try:
       job_collection = self.authenticated_service.jobs()
-      job_definition = {'configuration': {'query': { 'query': query_string }}}
+      job_definition = {'configuration': {'query': {'query': query_string}}}
 
       if batch_mode is True:
         job_definition['configuration']['query']['priority'] = 'BATCH'
@@ -312,44 +315,41 @@ class BigQueryCall:
 
     return job_reference_id
 
-  def monitor_query_queue(self, job_id, job_metadata, query_object = None, callback_function = None):
+  def monitor_query_queue(self, job_id, job_metadata, query_object=None,
+      callback_function=None):
 
     query_object = query_object or self
 
     if self.project_id is not None:
       started_checking = datetime.datetime.utcnow()
 
-      notification_identifier = "{metric}, {site}, {client_provider}, {date}, {duration}".format(**job_metadata)
-      self.logger.info('Queued request for {notification_identifier}, received job id: {job_id}'.format(
-          notification_identifier = notification_identifier, job_id = job_id))
+      notification_identifier = ', '.join(filter(None, job_metadata.values()))
+      self.logger.info('Queued request for %s, received job id: %s',
+          notification_identifier, job_id)
 
       while True:
         try:
           job_collection = query_object.authenticated_service.jobs()
           job_collection_state = job_collection.get(projectId = self.project_id, jobId = job_id).execute()
         except (SSLError, Exception, AttributeError, HttpError, httplib2.ServerNotFoundError) as caught_error:
-          self.logger.warn(('Encountered error ({caught_error}) monitoring ' +
-                            'for {notification_identifier}, could be temporary, ' +
-                            'not bailing out.').format(caught_error = caught_error,
-                                                      notification_identifier = notification_identifier))
+          self.logger.warn('Encountered error (%s) monitoring for %s, could '
+                            'be temporary, not bailing out.', caught_error,
+                              notification_identifier)
           job_collection_state = None
 
         if job_collection_state is not None:
           time_waiting = int((datetime.datetime.utcnow() - started_checking).total_seconds())
 
           if job_collection_state['status']['state'] == 'RUNNING':
-            self.logger.info(('Waiting for {notification_identifier} to complete, spent {time_waiting} '
-                              'seconds so far.').format(notification_identifier = notification_identifier,
-                                                        time_waiting = time_waiting))
+            self.logger.info('Waiting for %s to complete, spent %d seconds so '
+                              'far.', notification_identifier, time_waiting)
             time.sleep(10)
           elif job_collection_state['status']['state'] == 'PENDING':
-            self.logger.info(('Waiting for {notification_identifier} to submit, spent {time_waiting} '
-                              'seconds so far.').format(notification_identifier = notification_identifier,
-                                                        time_waiting = time_waiting))
+            self.logger.info('Waiting for %s to submit, spent %d seconds so '
+                              'far.', notification_identifier, time_waiting)
             time.sleep(60)
           elif job_collection_state['status']['state'] == 'DONE' and callback_function is not None:
-            self.logger.info('Found completion status for {notification_identifier}.'.format(
-                notification_identifier = notification_identifier))
+            self.logger.info('Found completion status for %s.', notification_identifier)
             callback_function(job_id, query_object = self)
             break
           else:

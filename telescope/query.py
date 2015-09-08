@@ -28,18 +28,22 @@ class BigQueryQueryGenerator(object):
   database_name = 'plx.google'
   table_format = '[{database_name}:m_lab.{table_date}.all]'
 
-  def __init__(self, start_time, end_time, metric, project, server_ips,
-               client_ip_blocks):
+  def __init__(self, start_time, end_time, metric, server_ips=None,
+                client_ip_blocks=None, client_country=None):
     self.logger = logging.getLogger('telescope')
     self._select_list = self._build_select_list(metric)
     self._table_list = self._build_table_list(start_time, end_time)
     self._conditional_dict = {}
-    is_web100 = project != 'paris_traceroute'
     self._add_data_direction_conditional(metric)
-    self._add_log_time_conditional(start_time, end_time, is_web100)
-    self._add_client_network_blocks_conditional(client_ip_blocks, is_web100)
-    self._add_server_ips_conditional(server_ips, is_web100)
-    self._query = self._create_query_string(project)
+    self._add_log_time_conditional(start_time, end_time)
+
+    if client_ip_blocks:
+      self._add_client_ip_blocks_conditional(client_ip_blocks)
+    if client_country:
+      self._add_client_country_conditional(client_country)
+    if server_ips:
+      self._add_server_ips_conditional(server_ips)
+    self._query = self._create_query_string()
 
   def query(self):
     return self._query
@@ -116,10 +120,6 @@ class BigQueryQueryGenerator(object):
         'packet_retransmit_rate': (['web100_log_entry.snap.SegsRetrans',
                                     'web100_log_entry.snap.DataSegsOut'] +
                                    metric_data_directions['s2c']),
-        'hop_count': ['test_id', 'paris_traceroute_hop.dest_ip',
-                      'paris_traceroute_hop.src_ip',
-                      'connection_spec.client_ip',
-                      'connection_spec.server_ip', 'log_time'],
     }
 
     if metric == 'all':
@@ -133,24 +133,17 @@ class BigQueryQueryGenerator(object):
     sorted_metric_names = sorted(list(metric_names_to_return))
     return sorted_metric_names
 
-  def _create_query_string(self, mlab_project='ndt'):
+  def _create_query_string(self):
     built_query_format = ('SELECT\n\t{select_list}\nFROM\n\t{table_list}\n'
                           'WHERE\n\t{conditional_list}')
-    non_null_fields = []
-
-    if mlab_project == 'ndt':
-      non_null_fields.extend(('connection_spec.data_direction',
-                              'web100_log_entry.is_last_entry',
-                              'web100_log_entry.snap.HCThruOctetsAcked',
-                              'web100_log_entry.snap.CongSignals',
-                              'web100_log_entry.connection_spec.remote_ip',
-                              'web100_log_entry.connection_spec.local_ip'))
-      tool_specific_conditions = ['project = 0',
-                                  'web100_log_entry.is_last_entry = True']
-    elif mlab_project == 'paris-traceroute':
-      tool_specific_conditions = ['project = 3']
-    else:
-      tool_specific_conditions = []
+    non_null_fields = ['connection_spec.data_direction',
+                       'web100_log_entry.is_last_entry',
+                       'web100_log_entry.snap.HCThruOctetsAcked',
+                       'web100_log_entry.snap.CongSignals',
+                       'web100_log_entry.connection_spec.remote_ip',
+                       'web100_log_entry.connection_spec.local_ip']
+    tool_specific_conditions = ['project = 0',
+                                'web100_log_entry.is_last_entry = True']
 
     non_null_conditions = []
     for field in non_null_fields:
@@ -163,21 +156,20 @@ class BigQueryQueryGenerator(object):
                                               tool_specific_conditions)
 
     if 'data_direction' in self._conditional_dict:
-      conditional_list_string += '\n\tAND {data_direction}'.format(
-          data_direction=self._conditional_dict['data_direction'])
+      conditional_list_string += '\n\tAND %s' % self._conditional_dict['data_direction']
 
     log_times_joined = ' OR\n\t'.join(self._conditional_dict['log_time'])
-    conditional_list_string += '\n\tAND ({log_times})'.format(
-        log_times=log_times_joined)
+    conditional_list_string += '\n\tAND (%s)' % log_times_joined
 
-    server_ips_joined = ' OR\n\t\t'.join(self._conditional_dict['server_ip'])
-    conditional_list_string += '\n\tAND ({server_ips})'.format(
-        server_ips=server_ips_joined)
+    if 'server_ips' in self._conditional_dict:
+      server_ips_joined = ' OR\n\t\t'.join(self._conditional_dict['server_ips'])
+      conditional_list_string += '\n\tAND (%s)' % server_ips_joined
 
-    client_ips_joined = ' OR\n\t\t'.join(
-        self._conditional_dict['client_network_block'])
-    conditional_list_string += '\n\tAND ({client_ips})'.format(
-        client_ips=client_ips_joined)
+    if 'client_ip_blocks' in self._conditional_dict:
+      client_ip_blocks_joined = ' OR\n\t\t'.join(self._conditional_dict['client_ip_blocks'])
+      conditional_list_string += '\n\tAND (%s)' % client_ip_blocks_joined
+    if 'client_country' in self._conditional_dict:
+       conditional_list_string += '\n\tAND %s' % self._conditional_dict['client_country']
 
     built_query_string = built_query_format.format(
         select_list=select_list_string,
@@ -186,8 +178,7 @@ class BigQueryQueryGenerator(object):
 
     return built_query_string
 
-  def _add_log_time_conditional(self, start_time_datetime, end_time_datetime,
-                                is_web100):
+  def _add_log_time_conditional(self, start_time_datetime, end_time_datetime):
     if 'log_time' not in self._conditional_dict:
       self._conditional_dict['log_time'] = set()
 
@@ -197,13 +188,8 @@ class BigQueryQueryGenerator(object):
     end_time = int(
         (end_time_datetime - utc_absolutely_utc).total_seconds())
 
-    if is_web100:
-      log_entry_fieldname = 'web100_log_entry.log_time'
-    else:
-      log_entry_fieldname = 'log_time'
-    new_statement = ('({log_entry_fieldname} >= {start_time})'
-                     ' AND ({log_entry_fieldname} < {end_time})').format(
-                         log_entry_fieldname=log_entry_fieldname,
+    new_statement = ('(web100_log_entry.log_time >= {start_time})'
+                     ' AND (web100_log_entry.log_time < {end_time})').format(
                          start_time=start_time,
                          end_time=end_time)
 
@@ -218,8 +204,7 @@ class BigQueryQueryGenerator(object):
     self._conditional_dict['data_direction'] = (
         'connection_spec.data_direction == %d' % data_direction)
 
-  def _add_client_network_blocks_conditional(self, client_ip_blocks,
-                                             is_web100):
+  def _add_client_ip_blocks_conditional(self, client_ip_blocks):
     # remove duplicates, warn if any are found
     unique_client_ip_blocks = list(set(client_ip_blocks))
     if len(client_ip_blocks) != len(unique_client_ip_blocks):
@@ -229,21 +214,16 @@ class BigQueryQueryGenerator(object):
     unique_client_ip_blocks = sorted(unique_client_ip_blocks,
                                      key=lambda block: block[0])
 
-    if is_web100:
-      remote_ip_fieldname = 'web100_log_entry.connection_spec.remote_ip'
-    else:
-      remote_ip_fieldname = 'connection_spec.client_ip'
-
-    self._conditional_dict['client_network_block'] = []
+    self._conditional_dict['client_ip_blocks'] = []
     for start_block, end_block in client_ip_blocks:
-      new_statement = ('PARSE_IP({remote_ip_fieldname}) BETWEEN '
-                       '{start_block} AND {end_block}').format(
-                           remote_ip_fieldname=remote_ip_fieldname,
-                           start_block=start_block,
-                           end_block=end_block)
-      self._conditional_dict['client_network_block'].append(new_statement)
+      new_statement = (
+          'PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN '
+          '{start_block} AND {end_block}').format(
+              start_block=start_block,
+              end_block=end_block)
+      self._conditional_dict['client_ip_blocks'].append(new_statement)
 
-  def _add_server_ips_conditional(self, server_ips, is_web100):
+  def _add_server_ips_conditional(self, server_ips):
     # remove duplicates, warn if any are found
     unique_server_ips = list(set(server_ips))
     if len(server_ips) != len(unique_server_ips):
@@ -252,14 +232,10 @@ class BigQueryQueryGenerator(object):
     # sort the IPs for the sake of consistent query generation
     unique_server_ips.sort()
 
-    if is_web100:
-      local_ip_fieldname = 'web100_log_entry.connection_spec.local_ip'
-    else:
-      local_ip_fieldname = 'connection_spec.server_ip'
-
-    self._conditional_dict['server_ip'] = []
+    self._conditional_dict['server_ips'] = []
     for server_ip in unique_server_ips:
-      new_statement = '{local_ip_fieldname} = \'{server_ip}\''.format(
-          local_ip_fieldname=local_ip_fieldname, server_ip=server_ip)
-      self._conditional_dict['server_ip'].append(new_statement)
+      new_statement = 'web100_log_entry.connection_spec.local_ip = \'%s\'' % server_ip
+      self._conditional_dict['server_ips'].append(new_statement)
 
+  def _add_client_country_conditional(self, client_country):
+    self._conditional_dict['client_country'] = 'connection_spec.client_geolocation.country_code = \'%s\'' % client_country.upper()

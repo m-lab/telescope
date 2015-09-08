@@ -16,6 +16,6 @@
 # limitations under the License.
 
 # Block the commit if it breaks unit tests.
-if ! python -m unittest discover . '*_test.py'; then
+if ! python -m unittest discover; then
     exit -1
 fi

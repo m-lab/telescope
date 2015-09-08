@@ -20,10 +20,19 @@ import datetime
 import json
 import logging
 import re
+import itertools
 
 import iptranslation
 import utils
 
+
+class Error(Exception):
+  pass
+
+
+class SelectorParseError(Error):
+  def __init__(self, message):
+    super(SelectorParseError, self).__init__('Failed to parse selector file: %s' % message)
 
 class Selector(object):
   """Represents the data required to select a dataset from the M-Lab data.
@@ -36,7 +45,6 @@ class Selector(object):
        how to translate the IP address information.
      client_provider: (str) Name of provider for which to retrieve data.
      site_name: (str) Name of M-Lab site for which to retrieve data.
-     mlab_project: (str) Name of project which holds the desired data.
   """
 
   def __init__(self):
@@ -45,11 +53,62 @@ class Selector(object):
     self.metric = None
     self.ip_translation_spec = None
     self.client_provider = None
-    self.site_name = None
-    self.mlab_project = None
+    self.client_country = None
+    self.site = None
 
   def __repr__(self):
-    return '<Selector Object (duration: %i)>' % (self.duration)
+    return ('<Selector Object (site: %s, client_provider: %s, client_country:'
+            '%s, metric: %s, start_time: %s, duration: %s)>' % (self.site,
+              self.client_provider, self.client_country, self.metric,
+              self.start_time.strftime("%Y-%m-%d"), self.duration))
+
+class MultiSelector(object):
+  """Represents a set of Selector objects.
+
+   Attributes:
+     start_times: (list) A list of datetimes indicating the start times of the
+       child Selectors.
+     duration: (int) Duration of time window in seconds for child Selectors.
+       Note that duation is a scalar, as a list would result in Selectors that
+       overlap.
+     metrics: (list) A list of metrics contained in child Selectors.
+     ip_translation_spec: (iptranslation.IPTranslationStrategySpec) Specifies
+       how to translate the IP address information.
+     client_providers: (list) List of string names of providers in the child
+       Selectors.
+     site_names: (list) List of M-Lab sites in the child Selectors..
+  """
+  def __init__(self):
+    self.start_times = None
+    self.duration = None
+    self.ip_translation_spec = None
+
+    # We use itertools to enumerate a combination of individual selectors from
+    # lists of multiple values. Itertools will not iterate when passed a None
+    # value, so instead we default to a list with a single value of None.
+
+    self.metrics = [None]
+    self.client_providers = [None]
+    self.client_countries = [None]
+    self.sites = [None]
+
+  def split(self):
+    """Splits a MultiSelector into an equivalent list of Selectors."""
+    selectors = []
+    selector_product = itertools.product(self.start_times,
+        self.client_providers, self.client_countries, self.sites, self.metrics)
+    for (start_time, client_provider, client_country, site,
+         metric) in selector_product:
+      selector = Selector()
+      selector.ip_translation_spec = self.ip_translation_spec
+      selector.duration = self.duration
+      selector.start_time = start_time
+      selector.client_provider = client_provider
+      selector.client_country = client_country
+      selector.site = site
+      selector.metric = metric
+      selectors.append(selector)
+    return selectors
 
 
 class SelectorFileParser(object):
@@ -58,67 +117,79 @@ class SelectorFileParser(object):
   Parses selector files, the primary mechanism for specification of measurement
   targets.
   """
-  # Not implemented -- 'hop_count': 'paris-traceroute',
-
-  supported_metrics = {
-      'download_throughput': 'ndt',
-      'upload_throughput': 'ndt',
-      'minimum_rtt': 'ndt',
-      'average_rtt': 'ndt',
-      'packet_retransmit_rate': 'ndt'
-      }
-
-  supported_file_format_versions = {'minimum': 1, 'maximum': 1}
-  supported_subset_keys = ['start_time', 'client_provider', 'site']
-
   def __init__(self):
     self.logger = logging.getLogger('telescope')
 
   def parse(self, selector_filepath):
     """Parses a selector file into one or more Selector objects.
 
-    Each selector object corresponds to one dataset. If the selector file
-    specifies multiple subsets, the parser will generate a separate selector
-    object for each subset. If the selector file specifies metric:'all', the
-    parser will generate a separate selector object for each supported metric.
+    Each Selector object corresponds to one discrete dataset to retrieve
+    from BigQuery. For fields in the selector file that contain lists of
+    values (e.g. metrics, sites), the parser will create a separate
+    Selector object for each combination of those values (e.g. if the file
+    specifies metrics [A, B] and sites: [X, Y, Z] the parser will create
+    Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z)).
 
     Args:
       selector_filepath: (str) Path to selector file to parse.
 
     Returns:
-      list: A list of parsed selector objects.
+      list: A list of parsed Selector objects.
     """
     with open(selector_filepath, 'r') as selector_fileinput:
       return self._parse_file_contents(selector_fileinput.read())
 
   def _parse_file_contents(self, selector_file_contents):
-    selector_input_json = json.loads(selector_file_contents)
+    try:
+      selector_input_json = json.loads(selector_file_contents)
+    except ValueError:
+      raise SelectorParseError('MalformedJSON')
+
     self._validate_selector_input(selector_input_json)
 
-    metrics = []
-    if selector_input_json['metric'] == 'all':
-      metrics.extend(self.supported_metrics.keys())
-    else:
-      metrics.append(selector_input_json['metric'])
-
-    selectors = []
-    for selector_subset in selector_input_json['subsets']:
-      for metric in metrics:
-        selector = Selector()
-        selector.start_time = (
-            self._parse_start_time(selector_subset['start_time']))
-        selector.duration = (
-            self._parse_duration(selector_input_json['duration']))
-        selector.metric = metric
-        selector.ip_translation_spec = (
-            self._parse_ip_translation(selector_input_json['ip_translation']))
-        selector.client_provider = selector_subset['client_provider']
-        selector.site_name = selector_subset['site']
-        selector.mlab_project = SelectorFileParser.supported_metrics[metric]
-
-        selectors.append(selector)
+    selectors = self._parse_input_for_selectors(selector_input_json)
 
     return selectors
+
+  def _parse_input_for_selectors(self, selector_json):
+    """Parse the selector JSON dictionary and return a list of Selectors, 
+    one for each combination specified.
+
+    Args:
+      selector_json (dict): Unprocessed Selector JSON file represented as a
+        dict.
+
+    Returns:
+      list: A list of parsed Selector objects.
+    """
+    multi_selector = MultiSelector()
+    multi_selector.duration = self._parse_duration(selector_json['duration'])
+    multi_selector.ip_translation_spec = self._parse_ip_translation(
+        selector_json['ip_translation'])
+
+    multi_selector.start_times = self._parse_start_times(
+        selector_json['start_times'])
+    multi_selector.metrics = selector_json['metrics']
+
+    if ('client_providers' in selector_json and
+        selector_json['client_providers']):
+      multi_selector.client_providers = _normalize_string_values(
+                                              selector_json['client_providers'])
+    if ('client_countries' in selector_json and
+        selector_json['client_countries']):
+      multi_selector.client_countries = _normalize_string_values(
+                                              selector_json['client_countries'])
+    if 'sites' in selector_json and selector_json['sites']:
+      multi_selector.sites = _normalize_string_values(selector_json['sites'])
+
+    return multi_selector.split()
+
+
+  def _parse_start_times(self, start_times_raw):
+    start_times = []
+    for start_time_string in start_times_raw:
+      start_times.append(self._parse_start_time(start_time_string))
+    return start_times
 
   def _parse_start_time(self, start_time_string):
     """Parse the time window start time.
@@ -137,7 +208,7 @@ class SelectorFileParser(object):
           datetime.datetime.strptime(start_time_string, '%Y-%m-%dT%H:%M:%SZ'))
       return utils.make_datetime_utc_aware(timestamp)
     except ValueError:
-      raise ValueError('UnsupportedSubsetDateFormat')
+      raise SelectorParseError('UnsupportedSubsetDateFormat')
 
   def _parse_duration(self, duration_string):
     """Parse the time window duration.
@@ -172,9 +243,9 @@ class SelectorFileParser(object):
         elif duration_type == 's':
           duration_seconds_to_return += numerical_amount
         else:
-          raise ValueError('UnsupportedSelectorDurationType')
+          raise SelectorParseError('UnsupportedSelectorDurationType')
     else:
-      raise ValueError('UnsupportedSelectorDuration')
+      raise SelectorParseError('UnsupportedSelectorDuration')
 
     return duration_seconds_to_return
 
@@ -195,95 +266,88 @@ class SelectorFileParser(object):
       ip_translation_spec.params = ip_translation_dict['params']
       return ip_translation_spec
     except KeyError as e:
-      raise ValueError('Missing expected field in ip_translation dict: %s' %
-                       e.args[0])
+      raise SelectorParseError(('Missing expected field in ip_translation '
+                                'dict: %s') %  e.args[0])
 
   def _validate_selector_input(self, selector_dict):
-    min_version = self.supported_file_format_versions['minimum']
-    max_version = self.supported_file_format_versions['maximum']
-    if (not selector_dict.has_key('file_format_version') or
-        selector_dict['file_format_version'] < min_version or
-        selector_dict['file_format_version'] > max_version):
-      raise ValueError('UnsupportedSelectorVersion')
+    if 'file_format_version' not in selector_dict:
+        raise SelectorParseError('NoSelectorVersionSpecified')
+    elif selector_dict['file_format_version'] == 1.0:
+        raise SelectorParseError('DeprecatedSelectorVersion')
+    elif selector_dict['file_format_version'] == 1.1:
+        parser_validator = SelectorFileValidator1_1()
+    else:
+        raise SelectorParseError('UnsupportedSelectorVersion')
 
-    if not selector_dict.has_key('duration'):
-      raise ValueError('UnsupportedDuration')
-
-    if (not selector_dict.has_key('metric') or
-        (type(selector_dict['metric']) != str and
-         type(selector_dict['metric']) != unicode) or
-        (selector_dict['metric'] not in self.supported_metrics and
-         selector_dict['metric'] != 'all')):
-      raise ValueError('UnsupportedMetric')
-
-    # For now we only support subset specifications with 1 or 2 (isp, site,
-    # client) tuples.
-    if len(selector_dict['subsets']) > 2 or len(selector_dict['subsets']) < 1:
-      raise ValueError('UnsupportedSubsetSize')
-
-    if (not selector_dict.has_key('subsets') or
-        type(selector_dict['subsets']) != list):
-      raise ValueError('UnsupportedSubsets')
-
-    for tuple_set in selector_dict['subsets']:
-      if sorted(tuple_set.keys()) != sorted(self.supported_subset_keys):
-        raise ValueError('UnsupportedSubsetDefinition')
-
-    # Selectors should contained two control variables and one independendent
-    # variable.
-    if len(selector_dict['subsets']) == 2:
-      self._find_independent_variable(selector_dict['subsets'])
-
-    return True
-
-  def _find_independent_variable(self, subsets):
-    """Find the independent variable between two subsets.
-
-    Args:
-      subsets: (list) List of length 2 with (isp, site, timestamp) dicts.
-
-    Returns:
-      str: name of the key that is different between the two tuples.
-    """
-    independent_variable = None
-
-    for key in subsets[0].keys():
-      if subsets[0][key] != subsets[1][key] and independent_variable is None:
-        independent_variable = key
-      elif (subsets[0][key] != subsets[1][key] and
-            independent_variable is not None):
-        raise ValueError('IncomparableSets')
-
-    if independent_variable is None:
-      raise Exception('NoIndependentVariable')
-
-    return independent_variable
+    parser_validator.validate(selector_dict)
 
 
-class SelectorJsonEncoder(json.JSONEncoder):
-  """Encode Telescope selector into JSON."""
+class SelectorFileValidator(object):
+    def validate(self, selector_dict):
+      raise NotImplementedError('Subclasses must implement this function.')
+
+    def validate_common(self, selector_dict):
+      if 'duration' not in selector_dict:
+        raise SelectorParseError('UnsupportedDuration')
+
+      if (('metrics' not in selector_dict) or
+          (type(selector_dict['metrics']) != list)):
+        raise SelectorParseError('MetricsRequiresList')
+
+      if not selector_dict['start_times']:
+        raise SelectorParseError('List of start times must be non-empty.')
+
+      if not selector_dict['metrics']:
+        raise SelectorParseError('List of metrics must be non-empty.')
+
+      if 'client_countries' in selector_dict:
+        for client_country in selector_dict['client_countries']:
+          if not re.match('^[a-zA-Z]{2}$', client_country):
+            raise SelectorParseError('Requires ISO alpha-2 country code.')
+
+      supported_metrics = ('upload_throughput',
+                           'download_throughput',
+                           'average_rtt',
+                           'minimum_rtt',
+                           'packet_retransmit_rate')
+      for metric in selector_dict['metrics']:
+        if metric not in supported_metrics:
+          raise SelectorParseError('UnsupportedMetric')
+
+
+class SelectorFileValidator1_1(SelectorFileValidator):
+    def validate(self, selector_dict):
+        self.validate_common(selector_dict)
+        if 'subsets' in selector_dict:
+            raise SelectorParseError('SubsetsNoLongerSupported')
+
+
+class MultiSelectorJsonEncoder(json.JSONEncoder):
+  """Encode Telescope multi-selector into JSON."""
 
   def default(self, obj):
-    if isinstance(obj, Selector):
-      return self._encode_selector(obj)
+    if isinstance(obj, MultiSelector):
+      return self._encode_multi_selector(obj)
     return json.JSONEncoder.default(self, obj)
 
-  def _encode_selector(self, selector):
-    return {
-        'file_format_version': 1.0,
+  def _encode_multi_selector(self, selector):
+    base_selector = {
+        'file_format_version': 1.1,
         'duration': self._encode_duration(selector.duration),
-        'metric': selector.metric,
+        'metrics': selector.metrics,
         'ip_translation': self._encode_ip_translation(
             selector.ip_translation_spec),
-        'subsets': [
-            {
-                'site': selector.site_name,
-                'client_provider': selector.client_provider,
-                'start_time': datetime.datetime.strftime(selector.start_time,
-                                                         '%Y-%m-%dT%H:%M:%SZ')
-            }
-            ]
+        'start_times': self._encode_start_times(selector.start_times)
         }
+
+    if selector.site_names != [None]:
+        base_selector['sites'] = selector.site_names
+    if selector.client_countries != [None]:
+        base_selector['client_countries'] = selector.client_countries
+    if selector.client_providers != [None]:
+        base_selector['client_providers'] = selector.client_providers
+
+    return base_selector
 
   def _encode_duration(self, duration):
     return str(duration) + 'd'
@@ -294,3 +358,24 @@ class SelectorJsonEncoder(json.JSONEncoder):
         'params': ip_translation.params,
         }
 
+  def _encode_start_times(self, start_times):
+    encoded_start_times = []
+    for start_time in start_times:
+      encoded_start_times.append(datetime.datetime.strftime(
+          start_time, '%Y-%m-%dT%H:%M:%SZ'))
+    return encoded_start_times
+
+def _normalize_string_values(field_values):
+  """Normalize string values for passed parameters.
+
+  Normalizes parameters to ensure that they are consistent across queries where
+  factors such as case are should not change the output, and therefore not 
+  require additional Telescope queries.
+
+  Args:
+      field_values: (list) A list of string parameters.
+
+  Returns:
+      list: A list of normalized parameters for building selectors from.
+  """
+  return [field_value.lower() for field_value in field_values]

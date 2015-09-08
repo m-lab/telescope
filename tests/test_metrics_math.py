@@ -15,8 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import sys
 import unittest
 
+sys.path.insert(1, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '../telescope')))
 import metrics_math
 
 
@@ -39,12 +43,6 @@ class MetricsMathTest(unittest.TestCase):
     result = self.calculate_single_result(metric_name, datarow)
     self.assertEqual(timestamp_expected, result['timestamp'])
     self.assertEqual(metric_value_expected, result['result'])
-
-  def test_calculate_results_list_hop_count(self):
-    # TODO: Write this test.
-    pass
-    # mock_row = {}
-    # self.assertMetricMatchesExpected(mock_row, 'hop_count', 1407959123, 15)
 
   def test_calculate_results_list_minrtt(self):
     mock_row = {

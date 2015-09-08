@@ -15,23 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import mlab
-
 
 def calculate_results_list(metric, input_datarows):
   datarows_to_return = []
 
-  if metric == 'hop_count':
-    input_datarows = mlab.parse_pt_data(input_datarows)
-
   for datarow in input_datarows:
-
     calculated_result = None
 
-    if metric == 'hop_count':
-      timestamp = datarow['log_time']
-      calculated_result = len(datarow['hops'])
-    elif metric == 'minimum_rtt':
+    if metric == 'minimum_rtt':
       timestamp = datarow['web100_log_entry_log_time']
       calculated_result = (
           calculate_minrtt(datarow['web100_log_entry_snap_MinRTT']))

@@ -47,7 +47,7 @@ class IPTranslationStrategySpec(object):
 
 class IPTranslationStrategyFactory(object):
 
-  def __init__(self, file_opener = open):
+  def __init__(self, file_opener=open):
     self._file_opener = file_opener
     self._cache = {}
 
@@ -76,7 +76,7 @@ class IPTranslationStrategyFactory(object):
         snapshot = (snapshot_datetime, snapshot_file)
         snapshots.append(snapshot)
       except IOError as io_error:
-        raise iptranslation.MissingMaxMindError(snapshot_filename, io_error)
+        raise MissingMaxMindError(snapshot_path, io_error)
 
     return IPTranslationStrategyMaxMind(snapshots)
 
@@ -120,7 +120,7 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
           * Maintains and consults an internal cache of results since lookup
             process is relatively slow and results should not change.
     """
-    if self._cache.has_key(asn_search_name):
+    if asn_search_name in self._cache:
       return self._cache[asn_search_name]
 
     notification_cache = set()
@@ -156,7 +156,8 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
     """
     date_string = snapshot_datetime.strftime('%Y%m%d')
     snapshot_filename = 'GeoIPASNum2-%s.csv' % date_string
-    return os.path.join(maxmind_dir, snapshot_filename)
+    return os.path.join(os.path.dirname(__file__), maxmind_dir,
+                        snapshot_filename)
 
   def _parse_maxmind_snapshot(self, snapshot_file):
     """ Parses a MaxMind snapshot file into a list of blocks with associated
@@ -197,7 +198,7 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
           'level3': ['Level 3 Communications', 'GBLX'],
           'cablevision': ['Cablevision Systems', 'CSC Holdings', 'Cablevision Infrastructure', 'Cablevision Corporate', 'Optimum Online', 'Optimum WiFi', 'Optimum Network']
         }
-    if short_name_map.has_key(short_name):
+    if short_name in short_name_map:
       long_names = short_name_map[short_name]
       return self._regex_xor_names(long_names)
 

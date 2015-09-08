@@ -1,0 +1,15 @@
+{
+    "file_format_version": 1.1,
+    "sites": ["lga01", "lga02"],
+    "client_providers": ["comcast", "verizon", "cablevision"],
+    "client_countries": ["us"],
+    "start_times": ["2014-02-01T00:00:00Z"],
+    "duration": "30d",
+    "metrics": ["download_throughput", "minimum_rtt"],
+    "ip_translation":{
+        "strategy":"maxmind",
+        "params":{
+            "db_snapshots":["2014-08-04"]
+        }
+    }
+}
