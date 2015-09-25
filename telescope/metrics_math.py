@@ -37,9 +37,10 @@ def calculate_results_list(metric, input_datarows):
             timestamp = datarow['web100_log_entry_log_time']
             data_transfered = float(
                 datarow['web100_log_entry_snap_HCThruOctetsAcked'])
-            time_spent = (int(datarow['web100_log_entry_snap_SndLimTimeRwin']) +
-                          int(datarow['web100_log_entry_snap_SndLimTimeCwnd']) +
-                          int(datarow['web100_log_entry_snap_SndLimTimeSnd']))
+            time_spent = (
+                int(datarow['web100_log_entry_snap_SndLimTimeRwin']) +
+                int(datarow['web100_log_entry_snap_SndLimTimeCwnd']) +
+                int(datarow['web100_log_entry_snap_SndLimTimeSnd']))
             calculated_result = calculate_throughput(data_transfered,
                                                      time_spent)
 

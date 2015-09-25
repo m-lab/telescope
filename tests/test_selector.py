@@ -177,8 +177,8 @@ class SelectorFileParserTest(unittest.TestCase):
         client_providers = ['comcast', 'verizon']
         metrics = ['minimum_rtt', 'download_throughput', 'average_rtt']
 
-        for client_provider, site, metric in itertools.product(client_providers,
-                                                               sites, metrics):
+        for client_provider, site, metric in itertools.product(
+            client_providers, sites, metrics):
             selector_copy = copy.copy(selector_base)
             selector_copy.metric = metric
             selector_copy.client_provider = client_provider

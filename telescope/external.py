@@ -276,7 +276,7 @@ class BigQueryJobResultCollector(object):
         for results_row in results_response['rows']:
             parsed_row = dict(zip(
                 fields, [result_value['v'] for result_value in results_row['f']
-                  ]))
+                        ]))
             parsed_rows.append(parsed_row)
 
         if 'pageToken' in results_response:
@@ -331,7 +331,7 @@ class BigQueryCall:
                 'HTTP error when running asynchronous query: {error}'.format(
                     error=caught_http_error.resp))
         except (Exception, httplib2.ServerNotFoundError
-           ) as caught_generic_error:
+               ) as caught_generic_error:
             self.logger.error(
                 'Unknown error when running asynchronous query: {error}'.format(
                     error=caught_generic_error))

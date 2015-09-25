@@ -104,7 +104,7 @@ class MultiSelector(object):
             self.start_times, self.client_providers, self.client_countries,
             self.sites, self.metrics)
         for (start_time, client_provider, client_country, site, metric
-        ) in selector_product:
+            ) in selector_product:
             selector = Selector()
             selector.ip_translation_spec = self.ip_translation_spec
             selector.duration = self.duration
@@ -171,7 +171,7 @@ class SelectorFileParser(object):
     """
         multi_selector = MultiSelector()
         multi_selector.duration = self._parse_duration(selector_json['duration'
-                                                                ])
+                                                                    ])
         multi_selector.ip_translation_spec = self._parse_ip_translation(
             selector_json['ip_translation'])
 

@@ -201,9 +201,9 @@ class BigQueryQueryGenerator(object):
 
         new_statement = ('(web100_log_entry.log_time >= {start_time})'
                          ' AND (web100_log_entry.log_time < {end_time})'
-                    ).format(
-                        start_time=start_time,
-                        end_time=end_time)
+                        ).format(
+                            start_time=start_time,
+                            end_time=end_time)
 
         self._conditional_dict['log_time'].add(new_statement)
 

@@ -40,9 +40,9 @@ class UtilsTest(unittest.TestCase):
                           utils.strip_special_chars('spaces are okay.csv'))
 
     def testFilenameBuilder_CompleteParameterSet(self):
-        fake_filepath = utils.build_filename('/tmp/path/', '2014-02-01', '30d',
-                                             'iad01', 'comcast', 'us',
-                                             'download_throughput', '-fake.txt')
+        fake_filepath = utils.build_filename(
+            '/tmp/path/', '2014-02-01', '30d', 'iad01', 'comcast', 'us',
+            'download_throughput', '-fake.txt')
         expected_filepath = '/tmp/path/2014-02-01+30d_iad01_us_comcast_download_throughput-fake.txt'
         self.assertEquals(expected_filepath, fake_filepath)
 
