@@ -31,7 +31,7 @@ _STATE_TIME_WAIT = 11
 
 
 def filter_measurements_list(metric, measurements_list):
-  """Applies measurement validition functions across a list of measurements.
+    """Applies measurement validition functions across a list of measurements.
 
   Args:
     metric: (str) name of M-Lab metric to apply validation rules on for
@@ -43,19 +43,19 @@ def filter_measurements_list(metric, measurements_list):
     dict: Dictionary with two lists, categorize with keep and discard lists
       based on validation but always actually retain for statistical purposes.
   """
-  filter_functions = {
-      'download_throughput': _filter_download_throughput_measurement,
-      'upload_throughput': _filter_upload_throughput_measurement,
-      'minimum_rtt': _filter_minimum_rtt_measurement,
-      'average_rtt': _filter_average_rtt_measurement,
-      'packet_retransmit_rate': _filter_packet_retransmit_rate_measurement,
-      }
-  assert metric in filter_functions
-  return filter(filter_functions[metric], measurements_list)
+    filter_functions = {
+        'download_throughput': _filter_download_throughput_measurement,
+        'upload_throughput': _filter_upload_throughput_measurement,
+        'minimum_rtt': _filter_minimum_rtt_measurement,
+        'average_rtt': _filter_average_rtt_measurement,
+        'packet_retransmit_rate': _filter_packet_retransmit_rate_measurement,
+    }
+    assert metric in filter_functions
+    return filter(filter_functions[metric], measurements_list)
 
 
 def _filter_c2s_measurement(measurement):
-  """Validates result of a client-to-server test.
+    """Validates result of a client-to-server test.
 
   Applies measurement validity rules and tests presence of required fields for
   an upload (client-to-server) test.
@@ -80,26 +80,25 @@ def _filter_c2s_measurement(measurement):
   Notes:
     C2S tests do not maintain CongSignals variables
   """
-  required_fields = ['web100_log_entry_snap_Duration',
-                     'web100_log_entry_snap_HCThruOctetsReceived',
-                     'connection_spec_data_direction']
+    required_fields = ['web100_log_entry_snap_Duration',
+                       'web100_log_entry_snap_HCThruOctetsReceived',
+                       'connection_spec_data_direction']
 
-  for required_field in required_fields:
-    if required_field not in measurement.keys():
-      raise ValueError('MissingField: ' + required_field)
+    for required_field in required_fields:
+        if required_field not in measurement.keys():
+            raise ValueError('MissingField: ' + required_field)
 
-  assert int(measurement['connection_spec_data_direction']) == 0
+    assert int(measurement['connection_spec_data_direction']) == 0
 
-  return ((_MINIMUM_DURATION
-           <= int(measurement['web100_log_entry_snap_Duration'])
-           < _MAXIMUM_DURATION)
-          and (int(measurement['web100_log_entry_snap_HCThruOctetsReceived'])
-               >= _MINIMUM_PACKETS)
-          and _filter_invalid_tcp_state(measurement))
+    return (
+        (_MINIMUM_DURATION <= int(measurement['web100_log_entry_snap_Duration'])
+         < _MAXIMUM_DURATION) and
+        (int(measurement['web100_log_entry_snap_HCThruOctetsReceived']) >=
+         _MINIMUM_PACKETS) and _filter_invalid_tcp_state(measurement))
 
 
 def _filter_s2c_measurement(measurement):
-  """Validates result of a server-to-client test.
+    """Validates result of a server-to-client test.
 
   Applies measurement validity rules and tests presence of required fields for
   a download (server-to-client) test.
@@ -128,36 +127,37 @@ def _filter_s2c_measurement(measurement):
       least once.
         * CongSignals > 0
   """
-  required_fields = ['web100_log_entry_snap_SndLimTimeRwin',
-                     'web100_log_entry_snap_SndLimTimeCwnd',
-                     'web100_log_entry_snap_SndLimTimeSnd',
-                     'web100_log_entry_snap_CongSignals',
-                     'web100_log_entry_snap_HCThruOctetsAcked',
-                     'connection_spec_data_direction']
+    required_fields = ['web100_log_entry_snap_SndLimTimeRwin',
+                       'web100_log_entry_snap_SndLimTimeCwnd',
+                       'web100_log_entry_snap_SndLimTimeSnd',
+                       'web100_log_entry_snap_CongSignals',
+                       'web100_log_entry_snap_HCThruOctetsAcked',
+                       'connection_spec_data_direction']
 
-  if False in [required_field in measurement for required_field in required_fields]:
-    raise ValueError('MissingField')
+    if False in [required_field in measurement
+                 for required_field in required_fields]:
+        raise ValueError('MissingField')
 
-  assert int(measurement['connection_spec_data_direction']) == 1
+    assert int(measurement['connection_spec_data_direction']) == 1
 
-  total_time = (int(measurement['web100_log_entry_snap_SndLimTimeRwin']) +
-                int(measurement['web100_log_entry_snap_SndLimTimeCwnd']) +
-                int(measurement['web100_log_entry_snap_SndLimTimeSnd']))
-  if not (_MINIMUM_DURATION <= total_time < _MAXIMUM_DURATION):
-    return False
-  if not (int(measurement['web100_log_entry_snap_HCThruOctetsAcked'])
-          >= _MINIMUM_PACKETS):
-    return False
-  if not int(measurement['web100_log_entry_snap_CongSignals']) > 0:
-    return False
-  if not _filter_invalid_tcp_state(measurement):
-    return False
+    total_time = (int(measurement['web100_log_entry_snap_SndLimTimeRwin']) +
+                  int(measurement['web100_log_entry_snap_SndLimTimeCwnd']) +
+                  int(measurement['web100_log_entry_snap_SndLimTimeSnd']))
+    if not (_MINIMUM_DURATION <= total_time < _MAXIMUM_DURATION):
+        return False
+    if not (int(measurement['web100_log_entry_snap_HCThruOctetsAcked']) >=
+                _MINIMUM_PACKETS):
+        return False
+    if not int(measurement['web100_log_entry_snap_CongSignals']) > 0:
+        return False
+    if not _filter_invalid_tcp_state(measurement):
+        return False
 
-  return True
+    return True
 
 
 def _filter_invalid_tcp_state(measurement):
-  """Validates the TCP state was valid for a result.
+    """Validates the TCP state was valid for a result.
 
   Applies measurement validity rules to ensure that the test concluded the TCP
   3-way handshake and established a connnection.
@@ -174,17 +174,17 @@ def _filter_invalid_tcp_state(measurement):
     Connection must be established (and possibly closed):
         * State == 1 || (State >= 5 && State <= 11)
   """
-  if 'web100_log_entry_snap_State' not in measurement:
-    raise ValueError('MissingField')
+    if 'web100_log_entry_snap_State' not in measurement:
+        raise ValueError('MissingField')
 
-  state = int(measurement['web100_log_entry_snap_State'])
+    state = int(measurement['web100_log_entry_snap_State'])
 
-  return (state == _STATE_CLOSED) or (
-      (state >= _STATE_ESTABLISHED) and (state <= _STATE_TIME_WAIT))
+    return (state == _STATE_CLOSED) or (
+        (state >= _STATE_ESTABLISHED) and (state <= _STATE_TIME_WAIT))
 
 
 def _filter_download_throughput_measurement(measurement):
-  """Validates result for download throughput test.
+    """Validates result for download throughput test.
 
   Args:
     measurement: (dict) Measurement Lab and web100 variables for one
@@ -198,11 +198,11 @@ def _filter_download_throughput_measurement(measurement):
   Validity Rules:
     * Same as normal NDT server-to-client validity
   """
-  return _filter_s2c_measurement(measurement)
+    return _filter_s2c_measurement(measurement)
 
 
 def _filter_upload_throughput_measurement(measurement):
-  """Validates result for upload throughput metric.
+    """Validates result for upload throughput metric.
 
   Args:
     measurement: (dict) Measurement Lab and web100 variables for one
@@ -216,11 +216,11 @@ def _filter_upload_throughput_measurement(measurement):
   Validity Rules:
     * Same as normal NDT client-to-server validity
   """
-  return _filter_c2s_measurement(measurement)
+    return _filter_c2s_measurement(measurement)
 
 
 def _filter_minimum_rtt_measurement(measurement):
-  """Validates result for minimum round-trip time metric.
+    """Validates result for minimum round-trip time metric.
 
   Args:
     measurement: (dict) Measurement Lab and web100 variables for one
@@ -238,13 +238,13 @@ def _filter_minimum_rtt_measurement(measurement):
     * web100_log_entry.snap.MinRTT is defined (int != 0)
     * web100_log_entry.snap.CountRTT > 0
   """
-  return (_filter_s2c_measurement(measurement) and
-          (int(measurement['web100_log_entry_snap_MinRTT']) != 0) and
-          (int(measurement['web100_log_entry_snap_CountRTT']) > 0))
+    return (_filter_s2c_measurement(measurement) and
+            (int(measurement['web100_log_entry_snap_MinRTT']) != 0) and
+            (int(measurement['web100_log_entry_snap_CountRTT']) > 0))
 
 
 def _filter_average_rtt_measurement(measurement):
-  """Validates result for average round-trip time metric.
+    """Validates result for average round-trip time metric.
 
   Args:
     measurement: (dict) Measurement Lab and web100 variables for one
@@ -262,13 +262,13 @@ def _filter_average_rtt_measurement(measurement):
     * web100_log_entry.snap.SumRTT is defined (int != 0)
     * web100_log_entry.snap.CountRTT > 0
   """
-  return (_filter_s2c_measurement(measurement) and
-          (int(measurement['web100_log_entry_snap_SumRTT']) != 0) and
-          (int(measurement['web100_log_entry_snap_CountRTT']) > 0))
+    return (_filter_s2c_measurement(measurement) and
+            (int(measurement['web100_log_entry_snap_SumRTT']) != 0) and
+            (int(measurement['web100_log_entry_snap_CountRTT']) > 0))
 
 
 def _filter_packet_retransmit_rate_measurement(measurement):
-  """Validates result for packet retransmit rate metric.
+    """Validates result for packet retransmit rate metric.
 
   Args:
     measurement: (dict) Measurement Lab and web100 variables for one
@@ -287,7 +287,6 @@ def _filter_packet_retransmit_rate_measurement(measurement):
   Reference:
     https://code.google.com/p/m-lab/wiki/PDEChartsNDT#Packet_retransmission
   """
-  return (_filter_s2c_measurement(measurement) and
-          (int(measurement['web100_log_entry_snap_SegsRetrans']) != 0) and
-          (int(measurement['web100_log_entry_snap_DataSegsOut']) > 0))
-
+    return (_filter_s2c_measurement(measurement) and
+            (int(measurement['web100_log_entry_snap_SegsRetrans']) != 0) and
+            (int(measurement['web100_log_entry_snap_DataSegsOut']) > 0))
