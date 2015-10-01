@@ -1,13 +1,16 @@
 language: python
 python:
   - "2.7"
-# Install dependencies
 install:
     - pip install -r requirements.txt
     - pip install -r test-requirements.txt
     - pip install coveralls
-# Run unit tests
-script: coverage run --source telescope -m unittest discover
+    - pip install yapf
+script:
+    # Run unit tests and calculate code coverage.
+    - coverage run --source telescope -m unittest discover
+    # Check that source has correct formatting.
+    - yapf --diff --recursive --style google ./
 after_success:
     coveralls
 
