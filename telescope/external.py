@@ -275,9 +275,11 @@ class BigQueryJobResultCollector(object):
                   for field in results_response['schema']['fields']]
 
         for results_row in results_response['rows']:
+            # yapf: disable
             parsed_row = dict(zip(
                 fields,
                 [result_value['v'] for result_value in results_row['f']]))
+            # yapf: enable
             parsed_rows.append(parsed_row)
 
         if 'pageToken' in results_response:
