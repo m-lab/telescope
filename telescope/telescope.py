@@ -119,8 +119,8 @@ class ExternalQueryHandler(object):
                 validation_results = filters.filter_measurements_list(
                     self._metadata['metric'], bq_query_returned_data)
                 number_kept = len(validation_results)
-                number_discarded = (len(bq_query_returned_data) -
-                                    len(validation_results))
+                number_discarded = (
+                    len(bq_query_returned_data) - len(validation_results))
                 logger.info('Filtered measurements, kept %d and discarded %d',
                             number_kept, number_discarded)
 
