@@ -15,7 +15,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Block the commit if it breaks unit tests.
-if ! python -m unittest discover; then
-    exit -1
-fi
+# Block the commit if it breaks unit tests or formatting
+python -m unittest discover && yapf --diff --recursive --style google ./
