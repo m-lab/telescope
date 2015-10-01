@@ -39,15 +39,15 @@ class SelectorParseError(Error):
 class Selector(object):
     """Represents the data required to select a dataset from the M-Lab data.
 
-   Attributes:
-     start_time: (datetime) Time at which selection window begins.
-     duration: (int) Duration of time window in seconds.
-     metric: (str) Specifies the metric for which to retrieve data.
-     ip_translation_spec: (iptranslation.IPTranslationStrategySpec) Specifies
-       how to translate the IP address information.
-     client_provider: (str) Name of provider for which to retrieve data.
-     site_name: (str) Name of M-Lab site for which to retrieve data.
-  """
+     Attributes:
+         start_time: (datetime) Time at which selection window begins.
+         duration: (int) Duration of time window in seconds.
+         metric: (str) Specifies the metric for which to retrieve data.
+         ip_translation_spec: (iptranslation.IPTranslationStrategySpec)
+             Specifies how to translate the IP address information.
+         client_provider: (str) Name of provider for which to retrieve data.
+         site_name: (str) Name of M-Lab site for which to retrieve data.
+    """
 
     def __init__(self):
         self.start_time = None
@@ -69,19 +69,19 @@ class Selector(object):
 class MultiSelector(object):
     """Represents a set of Selector objects.
 
-   Attributes:
-     start_times: (list) A list of datetimes indicating the start times of the
-       child Selectors.
-     duration: (int) Duration of time window in seconds for child Selectors.
-       Note that duation is a scalar, as a list would result in Selectors that
-       overlap.
-     metrics: (list) A list of metrics contained in child Selectors.
-     ip_translation_spec: (iptranslation.IPTranslationStrategySpec) Specifies
-       how to translate the IP address information.
-     client_providers: (list) List of string names of providers in the child
-       Selectors.
-     sites: (list) List of M-Lab sites in the child Selectors..
-  """
+     Attributes:
+         start_times: (list) A list of datetimes indicating the start times of
+             the child Selectors.
+         duration: (int) Duration of time window in seconds for child Selectors.
+             Note that duation is a scalar, as a list would result in Selectors
+             that overlap.
+         metrics: (list) A list of metrics contained in child Selectors.
+         ip_translation_spec: (iptranslation.IPTranslationStrategySpec)
+             Specifies how to translate the IP address information.
+         client_providers: (list) List of string names of providers in the child
+             Selectors.
+         sites: (list) List of M-Lab sites in the child Selectors..
+    """
 
     def __init__(self):
         self.start_times = None
@@ -120,9 +120,9 @@ class MultiSelector(object):
 class SelectorFileParser(object):
     """Parser for Telescope selector files.
 
-  Parses selector files, the primary mechanism for specification of measurement
-  targets.
-  """
+    Parses selector files, the primary mechanism for specification of
+    measurement targets.
+    """
 
     def __init__(self):
         self.logger = logging.getLogger('telescope')
@@ -130,19 +130,19 @@ class SelectorFileParser(object):
     def parse(self, selector_filepath):
         """Parses a selector file into one or more Selector objects.
 
-    Each Selector object corresponds to one discrete dataset to retrieve
-    from BigQuery. For fields in the selector file that contain lists of
-    values (e.g. metrics, sites), the parser will create a separate
-    Selector object for each combination of those values (e.g. if the file
-    specifies metrics [A, B] and sites: [X, Y, Z] the parser will create
-    Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z)).
+        Each Selector object corresponds to one discrete dataset to retrieve
+        from BigQuery. For fields in the selector file that contain lists of
+        values (e.g. metrics, sites), the parser will create a separate
+        Selector object for each combination of those values (e.g. if the file
+        specifies metrics [A, B] and sites: [X, Y, Z] the parser will create
+        Selectors for (A, X), (A, Y), (A, Z), (B, X), (B, Y), (B,Z)).
 
-    Args:
-      selector_filepath: (str) Path to selector file to parse.
+        Args:
+            selector_filepath: (str) Path to selector file to parse.
 
-    Returns:
-      list: A list of parsed Selector objects.
-    """
+        Returns:
+            list: A list of parsed Selector objects.
+        """
         with open(selector_filepath, 'r') as selector_fileinput:
             return self._parse_file_contents(selector_fileinput.read())
 
@@ -159,16 +159,16 @@ class SelectorFileParser(object):
         return selectors
 
     def _parse_input_for_selectors(self, selector_json):
-        """Parse the selector JSON dictionary and return a list of Selectors, 
-    one for each combination specified.
+        """Parse the selector JSON dictionary and return a list of Selectors,
+        one for each combination specified.
 
-    Args:
-      selector_json (dict): Unprocessed Selector JSON file represented as a
-        dict.
+        Args:
+            selector_json (dict): Unprocessed Selector JSON file represented as a
+                dict.
 
-    Returns:
-      list: A list of parsed Selector objects.
-    """
+        Returns:
+            list: A list of parsed Selector objects.
+        """
         multi_selector = MultiSelector()
         multi_selector.duration = self._parse_duration(selector_json['duration'
                                                                     ])
@@ -202,15 +202,15 @@ class SelectorFileParser(object):
     def _parse_start_time(self, start_time_string):
         """Parse the time window start time.
 
-    Parse the start time from the expected timestamp format to Python datetime
-    format. Must be in UTC time.
+        Parse the start time from the expected timestamp format to Python
+        datetime format. Must be in UTC time.
 
-    Args:
-      start_time_string: (str) Timestamp in format YYYY-MM-DDTHH-mm-SS.
+        Args:
+            start_time_string: (str) Timestamp in format YYYY-MM-DDTHH-mm-SS.
 
-    Returns:
-      datetime: Python datetime for set timestamp string.
-    """
+        Returns:
+            datetime: Python datetime for set timestamp string.
+        """
         try:
             timestamp = (
                 datetime.datetime.strptime(start_time_string,
@@ -222,16 +222,17 @@ class SelectorFileParser(object):
     def _parse_duration(self, duration_string):
         """Parse the time window duration.
 
-    Parse the time window duration from the expected timespan format to integer
-    number of seconds.
+        Parse the time window duration from the expected timespan format to
+        integer number of seconds.
 
-    Args:
-      duration_string: (str) length in human-readable format, must follow number
-      + time type format. (d=days, h=hours, m=minutes, s=seconds), e.g. 30d.
+        Args:
+            duration_string: (str) length in human-readable format, must follow
+                number + time type format. (d=days, h=hours, m=minutes,
+                s=seconds), e.g. 30d.
 
-    Returns:
-      int: Number of seconds in specified time period.
-    """
+        Returns:
+            int: Number of seconds in specified time period.
+        """
         duration_seconds_to_return = 0
         duration_string_segments = re.findall('[0-9]+[a-zA-Z]+',
                                               duration_string)
@@ -265,14 +266,15 @@ class SelectorFileParser(object):
     def _parse_ip_translation(self, ip_translation_dict):
         """Parse the ip_translation field into an IPTranslationStrategySpec object.
 
-    Args:
-      ip_translation_dict: (dict) An unprocessed dictionary of
-      ip_translation data from the input selector file.
+        Args:
+            ip_translation_dict: (dict) An unprocessed dictionary of
+                ip_translation data from the input selector file.
 
-    Returns:
-      IPTranslationStrategySpec: An IPTranslationStrategySpec, which specifies
-      properties of the IP translation strategy according to the selector file.
-    """
+        Returns:
+            IPTranslationStrategySpec: An IPTranslationStrategySpec, which
+            specifies properties of the IP translation strategy according to
+            the selector file.
+        """
         try:
             ip_translation_spec = iptranslation.IPTranslationStrategySpec
             ip_translation_spec.strategy_name = ip_translation_dict['strategy']
@@ -384,14 +386,14 @@ class MultiSelectorJsonEncoder(json.JSONEncoder):
 def _normalize_string_values(field_values):
     """Normalize string values for passed parameters.
 
-  Normalizes parameters to ensure that they are consistent across queries where
-  factors such as case are should not change the output, and therefore not 
-  require additional Telescope queries.
+    Normalizes parameters to ensure that they are consistent across queries where
+    factors such as case are should not change the output, and therefore not
+    require additional Telescope queries.
 
-  Args:
-      field_values: (list) A list of string parameters.
+    Args:
+        field_values: (list) A list of string parameters.
 
-  Returns:
-      list: A list of normalized parameters for building selectors from.
-  """
+    Returns:
+        list: A list of normalized parameters for building selectors from.
+    """
     return [field_value.lower() for field_value in field_values]

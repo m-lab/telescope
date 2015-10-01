@@ -63,18 +63,18 @@ class MLabServerResolutionFailed(TelescopeError):
 class ExternalQueryHandler(object):
     """Monitors jobs in BigQuery and retrieves their results.
 
-  Monitors external jobs in BigQuery and retrieves and processed the resulting
-  data when the job completes.
-  """
+    Monitors external jobs in BigQuery and retrieves and processed the resulting
+    data when the job completes.
+    """
 
     def __init__(self, filepath, metadata):
         """Inits ExternalQueryHandler ouput and metadata information.
 
-    Args:
-        filepath: (str) Where the processed results will be stored.
-        metadata: (dict) Metadata on the query for output labels and further
-            processing of received values.
-    """
+        Args:
+            filepath: (str) Where the processed results will be stored.
+            metadata: (dict) Metadata on the query for output labels and further
+              processing of received values.
+        """
         self._metadata = metadata
         self._filepath = filepath
 
@@ -94,19 +94,19 @@ class ExternalQueryHandler(object):
     def retrieve_data_upon_job_completion(self, job_id, query_object=None):
         """Waits for a BigQuery job to complete, then processes its output.
 
-    Waits for a BigQuery job to complete, then retrieves the data, runs
-    appropriate filtering on the data, and writes the result to an output data
-    file.
+        Waits for a BigQuery job to complete, then retrieves the data, runs
+        appropriate filtering on the data, and writes the result to an output
+        data file.
 
-    Args:
-        job_id: (str) ID of job for which to retrieve data.
-        query_object: (external.BigQueryCall) Query object responsible for
+        Args:
+          job_id: (str) ID of job for which to retrieve data.
+          query_object: (external.BigQueryCall) Query object responsible for
             retrieving data from BigQuery.
 
-    Returns:
-        (bool) True if data was successfully retrieved, processed, and written
-        to file, False otherwise.
-    """
+        Returns:
+          (bool) True if data was successfully retrieved, processed, and written
+          to file, False otherwise.
+        """
         logger = logging.getLogger('telescope')
 
         if query_object:
@@ -149,13 +149,13 @@ class ExternalQueryHandler(object):
 def setup_logger(verbosity_level=0):
     """Create and configure application logging mechanism.
 
-  Args:
+    Args:
       verbosity_level: (int) Specifies how much information to log. 0 logs
-          informational messages and below. Values > 0 log all messages.
+        informational messages and below. Values > 0 log all messages.
 
-  Returns:
+    Returns:
       (logging.Logger) Logger object for the application.
-  """
+    """
     logger = logging.getLogger('telescope')
     console_handler = logging.StreamHandler()
     logger.addHandler(console_handler)
@@ -172,16 +172,16 @@ def write_metric_calculations_to_file(data_filepath,
                                       should_write_header=False):
     """Writes metric data to a file in CSV format.
 
-  Args:
-      data_filepath: (str) File path to which to write data.
-      metric_calculations: (list) A list of dictionaries containing the values
+    Args:
+        data_filepath: (str) File path to which to write data.
+        metric_calculations: (list) A list of dictionaries containing the values
           of retrieved metrics.
-      should_write_header: (bool) Indicates whether the output file should
+        should_write_header: (bool) Indicates whether the output file should
           contain a header line to identify each column of data.
 
-  Returns:
+    Returns:
       (bool) True if the file was written successfully.
-  """
+    """
     logger = logging.getLogger('telescope')
     try:
         with open(data_filepath, 'w') as data_file_raw:
@@ -216,13 +216,13 @@ def write_metric_calculations_to_file(data_filepath,
 def write_bigquery_to_file(bigquery_filepath, query_string):
     """Writes BigQuery query string to a file.
 
-  Args:
+    Args:
       bigquery_filepath: (str) Output file path.
       query_string: (str) BigQuery query string to write to file.
 
-  Returns:
+    Returns:
       (bool) True if query was written to file successfully, False otherwise.
-  """
+    """
     logger = logging.getLogger('telescope')
     try:
         with open(bigquery_filepath, 'w') as bigquery_file_raw:
@@ -237,14 +237,14 @@ def write_bigquery_to_file(bigquery_filepath, query_string):
 def selectors_from_files(selector_files):
     """Parses Selector objects from a list of selector files.
 
-  N.B.: Parsing errors are logged, but do not cause the function to fail.
+    N.B.: Parsing errors are logged, but do not cause the function to fail.
 
-  Args:
+    Args:
       selector_files: (list) A list of filenames of selector files.
 
-  Returns:
+    Returns:
       (list) A list of Selector objects that were successfully parsed.
-  """
+    """
     logger = logging.getLogger('telescope')
     parser = selector.SelectorFileParser()
     selectors = []
@@ -273,18 +273,18 @@ def create_ip_translator(ip_translator_spec):
 def generate_query(selector, ip_translator, mlab_site_resolver):
     """Generates BigQuery SQL corresponding to the given Selector object.
 
-  Args:
-      selector: (selector.Selector) Selector object that specifies what data to
-          retrieve.
-      ip_translator: (iptranslation.IPTranslationStrategy) Translator from ASN
-          name to associated IP address blocks.
-      mlab_site_resolver: (mlab.MLabSiteResolver) Resolver to translate M-Lab
-          site IDs to a set of IP addresses.
+    Args:
+        selector: (selector.Selector) Selector object that specifies what data to
+            retrieve.
+        ip_translator: (iptranslation.IPTranslationStrategy) Translator from ASN
+            name to associated IP address blocks.
+        mlab_site_resolver: (mlab.MLabSiteResolver) Resolver to translate M-Lab
+            site IDs to a set of IP addresses.
 
-  Returns:
-    (str, int) A 2-tuple containing the query string and the number of tables
-    referenced in the query.
-  """
+    Returns:
+        (str, int) A 2-tuple containing the query string and the number of tables
+        referenced in the query.
+    """
     logger = logging.getLogger('telescope')
 
     start_time_datetime = selector.start_time
@@ -323,15 +323,16 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
 def duration_to_string(duration_seconds):
     """Converts a number of seconds into a duration string.
 
-  Serializes an amount of time in seconds to a human-readable string
-  representing the time in days, hours, minutes, and seconds.
+    Serializes an amount of time in seconds to a human-readable string
+    representing the time in days, hours, minutes, and seconds.
 
-  Args:
-    duration_seconds: (int) Total number of seconds.
+    Args:
+        duration_seconds: (int) Total number of seconds.
 
-  Returns:
-    (str) The amount of time represented in a human-readable shorthand string.
-  """
+    Returns:
+        (str) The amount of time represented in a human-readable shorthand
+        string.
+    """
     duration_string = ''
     remaining_seconds = int(duration_seconds)
 
@@ -359,16 +360,16 @@ def duration_to_string(duration_seconds):
 def wait_to_respect_thread_limit(concurrent_thread_limit, queue_size):
     """Waits until the number of active threads is lower than the thread limit.
 
-  Waits until the number of active threads (including both background worker
-  threads and the main thread) have dropped below the maximum number of
-  permitted concurrent threads.
+    Waits until the number of active threads (including both background worker
+    threads and the main thread) have dropped below the maximum number of
+    permitted concurrent threads.
 
-  Args:
-    concurrent_thread_limit: (int) Maximum number of permitted concurrent
-        threads.
+    Args:
+        concurrent_thread_limit: (int) Maximum number of permitted concurrent
+            threads.
 
-    queue_size: (int) Total number of jobs waiting in work queue.
-  """
+        queue_size: (int) Total number of jobs waiting in work queue.
+    """
     logger = logging.getLogger('telescope')
     active_thread_count = threading.activeCount()
     while active_thread_count >= concurrent_thread_limit:
@@ -385,25 +386,26 @@ def process_selector_queue(selector_queue,
                            max_tables_without_batch=2):
     """Processes the queue of Selector objects waiting for processing.
 
-  Processes the queue of Selector objects by launching BigQuery jobs for each
-  Selector and spawning threads to gather the results. Enforces query rate
-  limits so that queue processing obeys limits on maximum simultaneous threads.
+    Processes the queue of Selector objects by launching BigQuery jobs for each
+    Selector and spawning threads to gather the results. Enforces query rate
+    limits so that queue processing obeys limits on maximum simultaneous
+    threads.
 
-  Args:
-    selector_queue: (Queue.Queue) A queue of Selector objects to process.
-    google_auth_config: (external.GoogleAPIAuth) Object containing GoogleAPI
-        auth data.
-    batchmode: (str) Indicates the batch mode to operate under.
-    max_tables_without_batch: (int) When batchmode is set to 'query', this
-        indicates the maximum number of database tables that can appear in the
-        SELECT portion of a query before the job is automatically converted to
-        batch mode.
+    Args:
+        selector_queue: (Queue.Queue) A queue of Selector objects to process.
+        google_auth_config: (external.GoogleAPIAuth) Object containing GoogleAPI
+            auth data.
+        batchmode: (str) Indicates the batch mode to operate under.
+        max_tables_without_batch: (int) When batchmode is set to 'query', this
+            indicates the maximum number of database tables that can appear in
+            the SELECT portion of a query before the job is automatically
+            converted to batch mode.
 
-  Returns:
-    (list) A list of 2-tuples where the first element is the spawned
-    worker thread that waits on query results and the second element is the
-    object that stores the results of the query.
-  """
+    Returns:
+        (list) A list of 2-tuples where the first element is the spawned worker
+        thread that waits on query results and the second element is the object
+        that stores the results of the query.
+    """
     logger = logging.getLogger('telescope')
     thread_monitor = []
 

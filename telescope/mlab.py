@@ -32,19 +32,19 @@ class MLabSiteResolver(object):
     def get_site_ndt_ips(self, site_id):
         """Get a list of a Measurement Lab site and slice's addresses.
 
-    Args:
-      site_id (str): M-Lab site identifier, should be an airport code and
-        a two-digit number.
+        Args:
+            site_id (str): M-Lab site identifier, should be an airport code and
+                a two-digit number.
 
-    Returns:
-      list: List of the IP addresses associated with the slices for a tool
-        running on the location's M-Lab nodes.
+        Returns:
+            list: List of the IP addresses associated with the slices for a tool
+                running on the location's M-Lab nodes.
 
-    Notes:
-      * Different tools generally have their own IP addresses per node. Where
-        they do not, the difference should be handled transparently by this
-        function.
-    """
+        Notes:
+            * Different tools generally have their own IP addresses per node.
+              Where they do not, the difference should be handled transparently
+              by this function.
+        """
         node_addresses_to_return = []
 
         for node_id in ['mlab1', 'mlab2', 'mlab3']:

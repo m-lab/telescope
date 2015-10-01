@@ -33,14 +33,14 @@ class MissingMaxMindError(Exception):
 class IPTranslationStrategySpec(object):
     """Specification of how to create an IPTranslationStrategy object.
 
-  Specifies the parameters required for IPTranslationFactory to create an
-  IPTranslationStrategy object.
+    Specifies the parameters required for IPTranslationFactory to create an
+    IPTranslationStrategy object.
 
-  Attributes:
-    strategy_name: (str) The name of this IP translation strategy.
-    params: (dict) A dictionary of parameters specific to this type of IP
-      translation strategy.
-  """
+    Attributes:
+        strategy_name: (str) The name of this IP translation strategy.
+        params: (dict) A dictionary of parameters specific to this type of IP
+            translation strategy.
+    """
 
     def __init__(self, strategy_name, params):
         self.strategy_name = strategy_name
@@ -95,13 +95,13 @@ class IPTranslationStrategy(object):
 class IPTranslationStrategyMaxMind(IPTranslationStrategy):
 
     def __init__(self, snapshots):
-        """ Creates a new MaxMind IP translator.
+        """Creates a new MaxMind IP translator.
 
         Args:
-         snapshots (list): A list of 2-tuples where the first element is a datetime
-         and the second element is a file handle to the snapshot at that date.
-
-    """
+           snapshots (list): A list of 2-tuples where the first element is a
+               datetime and the second element is a file handle to the snapshot
+               at that date.
+        """
         self.logger = logging.getLogger('telescope')
         if len(snapshots) > 1:
             raise NotImplementedError(
@@ -111,22 +111,23 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
         self._cache = {}
 
     def find_ip_blocks(self, asn_search_name):
-        """ Search memory-cached copy of map of network maps.
-        Currently, searches each (block_start_address, block_end_address, asn_name)
-        list based on a case-insensitive match of the AS name.
+        """Search memory-cached copy of map of network maps.
+
+        Currently, searches each (block_start_address, block_end_address,
+        asn_name) list based on a case-insensitive match of the AS name.
 
         Args:
-          asn_search_name (str): string to search AS names in order to identify network
-          blocks.
+            asn_search_name (str): string to search AS names in order to
+                identify network blocks.
 
         Returns:
-          list: Matching tuples of (block_start_address, block_end_address,
-          asn_name), empty if no network found.
+            list: Matching tuples of (block_start_address, block_end_address,
+            asn_name), empty if no network found.
 
         Notes:
-          * Maintains and consults an internal cache of results since lookup
-            process is relatively slow and results should not change.
-    """
+            * Maintains and consults an internal cache of results since lookup
+              process is relatively slow and results should not change.
+        """
         if asn_search_name in self._cache:
             return self._cache[asn_search_name]
 
@@ -153,33 +154,32 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
 
     @staticmethod
     def get_maxmind_snapshot_path(snapshot_datetime, maxmind_dir):
-        """ Generates the expected path of the MaxMind snapshot file based on the
+        """Generates the expected path of the MaxMind snapshot file based on the
         date of the snapshot and the snapshot directory.
 
         Args:
-          snapshot_datetime (str): Datetime of when snapshot was created.
+            snapshot_datetime (str): Datetime of when snapshot was created.
 
         Returns:
-          string: Pathname of MaxMind database file.
-
-    """
+            string: Pathname of MaxMind database file.
+        """
         date_string = snapshot_datetime.strftime('%Y%m%d')
         snapshot_filename = 'GeoIPASNum2-%s.csv' % date_string
         return os.path.join(os.path.dirname(__file__), maxmind_dir,
                             snapshot_filename)
 
     def _parse_maxmind_snapshot(self, snapshot_file):
-        """ Parses a MaxMind snapshot file into a list of blocks with associated
+        """Parses a MaxMind snapshot file into a list of blocks with associated
         ASN names.
 
         Args:
-          snapshot_filename (str): Filename of MaxMind snapshot to parse.
+            snapshot_filename (str): Filename of MaxMind snapshot to parse.
 
         Returns:
-          list: A list of dicts, each containing a 'block_start', 'block_end',
-          and 'asn_name' entry, according to entries in the MaxMind snapshot.
-
-    """
+            list: A list of dicts, each containing a 'block_start', 'block_end',
+            and 'asn_name' entry, according to entries in the MaxMind
+            snapshot.
+        """
         block_rows = []
         csvReader = csv.DictReader(
             snapshot_file,
@@ -191,19 +191,18 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
         return block_rows
 
     def _translate_short_name(self, short_name):
-        """ Translates an ISP shortname into a regex that matches all company names
+        """Translates an ISP shortname into a regex that matches all company names
         that are part of the ISP.
 
         Args:
-          short_name (str): A short name for an ISP, such as 'twc' for Time Warner
-          Cable.
+            short_name (str): A short name for an ISP, such as 'twc' for Time
+                Warner Cable.
 
         Returns:
-          str: A regex string that matches company names that are part of the
-          specified ISP. For example, level3 translates to:
-            '(Level 3 Communications)|(GBLX)'
-
-    """
+            str: A regex string that matches company names that are part of the
+            specified ISP. For example, level3 translates to:
+                '(Level 3 Communications)|(GBLX)'
+        """
         short_name_map = {
             'twc': ['Time Warner'],
             'centurylink': ['Qwest', 'Embarq', 'Centurylink', 'Centurytel'],
@@ -220,16 +219,15 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
         return re.escape(short_name)
 
     def _regex_xor_names(self, names):
-        """ Converts a list of names into a regex that matches any of the names.
+        """Converts a list of names into a regex that matches any of the names.
 
         Args:
-          names (list): A list of ISP names.
+            names (list): A list of ISP names.
 
         Returns:
-          str: A regex that matches any name in the list. For example, the
-          list ['foo', 'bar', 'baz'] would result in '(foo)|(bar)|(baz)'.
-
-    """
+            str: A regex that matches any name in the list. For example, the
+            list ['foo', 'bar', 'baz'] would result in '(foo)|(bar)|(baz)'.
+        """
         escaped_names = []
         for name in names:
             escaped_names.append(re.escape(name))

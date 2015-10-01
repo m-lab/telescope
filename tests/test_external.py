@@ -43,19 +43,20 @@ class MockHttpError(apiclient.errors.HttpError):
 def _construct_mock_bigquery_response(mock_rows):
     """Convert a list of result rows to BigQuery's response format.
 
-  Given a list of mock rows, put them in a JSON response that matches BigQuery's
-  response format (at least enough to work with BigQueryJobResultCollector).
+    Given a list of mock rows, put them in a JSON response that matches
+    BigQuery's response format (at least enough to work with
+    BigQueryJobResultCollector).
 
-  Args:
-    mock_rows: (list) A list of dicts in which each element represents a result
-      row, e.g.:
-      [{'foo': 'bar1', 'faz': 'baz1'},
-       {'foo': 'bar2', 'faz': 'baz2'},
-       ...]
+    Args:
+        mock_rows: (list) A list of dicts in which each element represents a
+        result row, e.g.:
+            [{'foo': 'bar1', 'faz': 'baz1'},
+             {'foo': 'bar2', 'faz': 'baz2'},
+             ...]
 
-  Returns:
-    (dict) A dictionary representing mock_rows in BigQuery response format.
-  """
+    Returns:
+        (dict) A dictionary representing mock_rows in BigQuery response format.
+    """
     mock_response = {
         'schema': {
             'fields': [{'name': f} for f in mock_rows[0].keys()]

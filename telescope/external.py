@@ -37,9 +37,9 @@ from httplib import ResponseNotReady
 class BigQueryJobFailure(Exception):
     """Indicates that a BigQuery job's result was retrieved, but the query failed.
 
-  Raised when BigQuery reports a job has failed. Additional attempts to retrieve
-  the job status will not change the result.
-  """
+    Raised when BigQuery reports a job has failed. Additional attempts to
+    retrieve the job status will not change the result.
+    """
 
     def __init__(self, http_code, cause):
         self.code = http_code
@@ -49,11 +49,11 @@ class BigQueryJobFailure(Exception):
 class BigQueryCommunicationError(Exception):
     """An error occurred trying to communicate with BigQuery
 
-  This error is raised when the application fails to communicate with BigQuery.
-  It does not indicate that the result of the query itself failed, but rather
-  that the result of the query is indeterminate because the application failed
-  to retrieve status from BigQuery.
-  """
+    This error is raised when the application fails to communicate with BigQuery.
+    It does not indicate that the result of the query itself failed, but rather
+    that the result of the query is indeterminate because the application failed
+    to retrieve status from BigQuery.
+    """
 
     def __init__(self, message, cause):
         self.cause = cause
@@ -74,12 +74,12 @@ class APIConfigError(Exception):
 
 
 class GoogleAPIAuthConfig:
-    """ Google API requires an object with preferences for logging and
-      authentication. Rather than pass with argparse, for now we manually
-      build the default configurations to pass directly. Not guaranteed to
-      stay in the future.
+    """Google API requires an object with preferences for logging and
+    authentication. Rather than pass with argparse, for now we manually
+    build the default configurations to pass directly. Not guaranteed to
+    stay in the future.
 
-  """
+    """
     logging_level = 'ERROR'
     noauth_local_webserver = False
     auth_host_port = [8080, 8090]
@@ -139,10 +139,10 @@ class BigQueryJobResultCollector(object):
     def __init__(self, jobs_service, project_id):
         """Class to collect the results from a BigQuery job when the job completes.
 
-    Args:
-      jobs_service: BigQuery jobs service instance.
-      project_id: (int) ID of project for which to retrieve results.
-    """
+        Args:
+            jobs_service: BigQuery jobs service instance.
+            project_id: (int) ID of project for which to retrieve results.
+        """
         self.logger = logging.getLogger('telescope')
         self._jobs_service = jobs_service
         self._project_id = project_id
@@ -150,12 +150,12 @@ class BigQueryJobResultCollector(object):
     def collect_results(self, job_id):
         """Wait until a job is complete and gather all results.
 
-    Args:
-      job_id: (str) Job ID for which to retrieve results.
+        Args:
+            job_id: (str) Job ID for which to retrieve results.
 
-    Returns:
-      (list) A list of result rows from the completed BigQuery job.
-    """
+        Returns:
+            (list) A list of result rows from the completed BigQuery job.
+        """
         collected_rows = []
         is_first_chunk = True
         page_token = None
@@ -177,17 +177,18 @@ class BigQueryJobResultCollector(object):
     def _wait_for_results_chunk(self, job_id, page_token):
         """Retrieve a single chunk of results from a completed BigQuery job.
 
-    Retrieve a fixed number of BigQuery result rows, where the number requested
-    may be greater or less than the total number of rows available.
+        Retrieve a fixed number of BigQuery result rows, where the number
+        requested may be greater or less than the total number of rows
+        available.
 
-    Args:
-      job_id: (str) Job ID for which to retrieve results.
-      page_token: Token that indicates which page of results for which to
-        retrieve results or None to retrieve the first page of results.
+        Args:
+            job_id: (str) Job ID for which to retrieve results.
+            page_token: Token that indicates which page of results for which to
+                retrieve results or None to retrieve the first page of results.
 
-    Returns:
-      (list) A list of result rows in the current chunk of results.
-    """
+        Returns:
+            (list) A list of result rows in the current chunk of results.
+        """
         MAX_RESULTS_PER_GET = 100000
         query_request = {
             'projectId': self._project_id,
@@ -218,17 +219,17 @@ class BigQueryJobResultCollector(object):
     def _execute_job_query(self, bq_query):
         """Executes a query to retrieve BigQuery query results.
 
-    Args:
-      bq_query: (dict) Parameter set of the query to execute.
+        Args:
+            bq_query: (dict) Parameter set of the query to execute.
 
-    Returns:
-      (dict) The result of the query in the form of a dictionary.
+        Returns:
+            (dict) The result of the query in the form of a dictionary.
 
-    Raises:
-      TableDoesNotExist: Query specified a table that does not exist.
-      BigQueryJobFailure: The job completed, but the query failed.
-      BigQueryCommunicationError: Could not communicate with BigQuery.
-    """
+        Raises:
+            TableDoesNotExist: Query specified a table that does not exist.
+            BigQueryJobFailure: The job completed, but the query failed.
+            BigQueryCommunicationError: Could not communicate with BigQuery.
+        """
         try:
             return self._jobs_service.getQueryResults(**bq_query).execute()
         except HttpError as e:
@@ -246,23 +247,23 @@ class BigQueryJobResultCollector(object):
     def _parse_query_results_response(self, results_response):
         """Parse the response dictionary from BigQuery.
 
-    Parse the response dictionary from BigQuery into result rows and a page
-    token.
+        Parse the response dictionary from BigQuery into result rows and a page
+        token.
 
-    Args:
-      results_response: A response dictionary from BigQuery representing the
-      results of a BigQuery query job.
+        Args:
+            results_response: A response dictionary from BigQuery representing the
+                results of a BigQuery query job.
 
-    Returns:
-      (list, token) A two-tuple where the first element is a list of result rows
-      in the format:
+        Returns:
+          (list, token) A two-tuple where the first element is a list of result
+          rows in the format:
 
-        [{'fieldA': 'valueA1', 'fieldB': 'valueB1'}, # row 1
-         {'fieldA': 'valueA2', 'fieldB': 'valueB2'}] # row 2
+            [{'fieldA': 'valueA1', 'fieldB': 'valueB1'}, # row 1
+             {'fieldA': 'valueA2', 'fieldB': 'valueB2'}] # row 2
 
-      and the second element is a page token indicating the next page of results
-      or None if there are no more results available.
-    """
+          and the second element is a page token indicating the next page of
+          results or None if there are no more results available.
+        """
         parsed_rows = []
         if int(results_response['totalRows']) == 0:
             self.logger.warn(

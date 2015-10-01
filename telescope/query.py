@@ -59,23 +59,25 @@ class BigQueryQueryGenerator(object):
     def _build_table_list(self, start_time, end_time):
         """Enumerates monthly BigQuery tables covered between two datetime objects.
 
-    Args:
-      start_time: (datetime) Start date that the queried tables should cover.
-      end_time: (datetime) End date that the queried tables should cover.
-    Returns:
-      list: List of M-Lab tables covering the dates passed to function.
+        Args:
+            start_time: (datetime) Start date that the queried tables should
+                cover.
+            end_time: (datetime) End date that the queried tables should cover.
+        Returns:
+            list: List of M-Lab tables covering the dates passed to function.
 
-    Notes:
-      * Rounds the start down to the first day of month, and rounds the end to
-        the last day, so that rrule's enumeration of months does not fall short
-        due to the duration of the search being less that the length of a
-        month. The latter occurs through rounding the end date down to the
-        first second of the first day of that month, using relative delta to
-        add another month to the date and then subtracting one second.
+        Notes:
+            * Rounds the start down to the first day of month, and rounds the
+              end to the last day, so that rrule's enumeration of months does
+              not fall short due to the duration of the search being less that
+              the length of a month. The latter occurs through rounding the end
+              date down to the first second of the first day of that month,
+              using relative delta to add another month to the date and then
+              subtracting one second.
 
-      * Between these two periods, rrule enumerates datetime objects that we
-        use to build table names from the class-defined string format.
-    """
+            * Between these two periods, rrule enumerates datetime objects that
+              we use to build table names from the class-defined string format.
+        """
         table_names = []
 
         start_time_fixed = datetime.datetime(start_time.year, start_time.month,
