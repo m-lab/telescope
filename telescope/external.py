@@ -276,8 +276,8 @@ class BigQueryJobResultCollector(object):
 
         for results_row in results_response['rows']:
             parsed_row = dict(zip(
-                fields, [result_value['v'] for result_value in results_row['f']
-                        ]))
+                fields,
+                [result_value['v'] for result_value in results_row['f']]))
             parsed_rows.append(parsed_row)
 
         if 'pageToken' in results_response:
@@ -294,8 +294,8 @@ class BigQueryCall:
         self.logger = logging.getLogger('telescope')
 
         try:
-            self.authenticated_service = google_auth_config.authenticate_with_google(
-            )
+            self.authenticated_service = (
+                google_auth_config.authenticate_with_google())
             self.project_id = google_auth_config.project_id
         except (SSLError, AttributeError, HttpError,
                 httplib2.ServerNotFoundError, ResponseNotReady) as e:

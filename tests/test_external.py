@@ -84,10 +84,9 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
 
     def test_single_page_multiple_rows(self):
         mock_result_rows = [
-            {'fieldA': 'valueA1',
-             'fieldB': 'valueB1'}, {'fieldA': 'valueA2',
-                                    'fieldB': 'valueB2'}
-        ]
+            {'fieldA': 'valueA1', 'fieldB': 'valueB1'},
+            {'fieldA': 'valueA2', 'fieldB': 'valueB2'}
+             ]  # yapf: disable
         mock_response = _construct_mock_bigquery_response(mock_result_rows)
         self.mock_jobs_service.getQueryResults().execute.return_value = (
             mock_response)
@@ -142,10 +141,9 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
     def test_collector_ignores_two_http_500_errors(self):
         """Keep retrying if the first two HTTP requests fail."""
         mock_result_rows = [
-            {'fieldA': 'valueA1',
-             'fieldB': 'valueB1'}, {'fieldA': 'valueA2',
-                                    'fieldB': 'valueB2'}
-        ]
+            {'fieldA': 'valueA1', 'fieldB': 'valueB1'},
+            {'fieldA': 'valueA2', 'fieldB': 'valueB2'}
+            ]  # yapf: disable
         mock_response = _construct_mock_bigquery_response(mock_result_rows)
         self.mock_jobs_service.getQueryResults().execute.side_effect = (
             MockHttpError(500), MockHttpError(500), mock_response)

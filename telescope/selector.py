@@ -170,8 +170,8 @@ class SelectorFileParser(object):
             list: A list of parsed Selector objects.
         """
         multi_selector = MultiSelector()
-        multi_selector.duration = self._parse_duration(selector_json['duration'
-                                                                    ])
+        multi_selector.duration = self._parse_duration(
+            selector_json['duration'])
         multi_selector.ip_translation_spec = self._parse_ip_translation(
             selector_json['ip_translation'])
 
