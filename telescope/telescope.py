@@ -28,7 +28,6 @@ import threading
 import time
 
 import external
-import filters
 import iptranslation
 import metrics_math
 import mlab
@@ -94,9 +93,8 @@ class ExternalQueryHandler(object):
     def retrieve_data_upon_job_completion(self, job_id, query_object=None):
         """Waits for a BigQuery job to complete, then processes its output.
 
-        Waits for a BigQuery job to complete, then retrieves the data, runs
-        appropriate filtering on the data, and writes the result to an output
-        data file.
+        Waits for a BigQuery job to complete, then retrieves the data, and
+        writes the result to an output data file.
 
         Args:
           job_id: (str) ID of job for which to retrieve data.
@@ -116,16 +114,8 @@ class ExternalQueryHandler(object):
                     'Received data, processing according to %s metric.',
                     self._metadata['metric'])
 
-                validation_results = filters.filter_measurements_list(
-                    self._metadata['metric'], bq_query_returned_data)
-                number_kept = len(validation_results)
-                number_discarded = (
-                    len(bq_query_returned_data) - len(validation_results))
-                logger.info('Filtered measurements, kept %d and discarded %d',
-                            number_kept, number_discarded)
-
                 subset_metric_calculations = metrics_math.calculate_results_list(
-                    self._metadata['metric'], validation_results)
+                    self._metadata['metric'], bq_query_returned_data)
 
                 write_metric_calculations_to_file(self._filepath,
                                                   subset_metric_calculations)
