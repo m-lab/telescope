@@ -23,6 +23,79 @@ import dateutil.relativedelta
 import utils
 
 
+def _seconds_to_microseconds(seconds):
+    return seconds * 1000000
+
+
+def _is_server_to_client_metric(metric):
+    return metric in ('download_throughput', 'minimum_rtt', 'average_rtt',
+                      'packet_retransmit_rate')
+
+
+def _create_test_validity_conditional(metric):
+    """Creates BigQuery SQL clauses to specify validity rules for an NDT test.
+
+    Args:
+        metric: (string) The metric for which to add the conditional.
+
+    Returns:
+        (string) A set of SQL clauses that specify conditions an NDT test must
+        meet to be considered a valid, completed test.
+    """
+    # NDT test is supposed to last 10 seconds, give some buffer for tests that
+    # ended slighly before 10 seconds.
+    MIN_DURATION = _seconds_to_microseconds(9)
+
+    # Tests that last > 1 hour are likely erroneous.
+    MAX_DURATION = _seconds_to_microseconds(3600)
+
+    # A test that did not exchange at least 8,192 bytes is likely erroneous.
+    MIN_BYTES = 8192
+
+    # web100 state variable constants from
+    # http://www.web100.org/download/kernel/tcp-kis.txt
+    STATE_CLOSED = 1
+    STATE_ESTABLISHED = 5
+    STATE_TIME_WAIT = 11
+
+    conditions = []
+    # Must have completed the TCP three-way handshake.
+    conditions.append(
+        ('(web100_log_entry.snap.State = {state_closed}\n\t'
+         '\tOR (web100_log_entry.snap.State >= {state_established}\n\t'
+         '\t\tAND web100_log_entry.snap.State <= {state_time_wait}))').format(
+             state_closed=STATE_CLOSED,
+             state_established=STATE_ESTABLISHED,
+             state_time_wait=STATE_TIME_WAIT))
+
+    if _is_server_to_client_metric(metric):
+        # Must leave slow start phase of TCP, indicated by reaching
+        # congestion at least once.
+        conditions.append('web100_log_entry.snap.CongSignals > 0')
+        # Must send at least the minimum number of bytes.
+        conditions.append(
+            'web100_log_entry.snap.HCThruOctetsAcked >= %d' % MIN_BYTES)
+        # Must last for at least the minimum test duration.
+        conditions.append(
+            ('(web100_log_entry.snap.SndLimTimeRwin +\n\t'
+             '\tweb100_log_entry.snap.SndLimTimeCwnd +\n\t'
+             '\tweb100_log_entry.snap.SndLimTimeSnd) >= %u') % MIN_DURATION)
+        # Must not exceed the maximum test duration.
+        conditions.append(
+            ('(web100_log_entry.snap.SndLimTimeRwin +\n\t'
+             '\tweb100_log_entry.snap.SndLimTimeCwnd +\n\t'
+             '\tweb100_log_entry.snap.SndLimTimeSnd) < %u') % MAX_DURATION)
+    else:
+        # Must receive at least the minimum number of bytes.
+        conditions.append(
+            'web100_log_entry.snap.HCThruOctetsReceived >= %u' % MIN_BYTES)
+        # Must last for at least the minimum test duration.
+        conditions.append('web100_log_entry.snap.Duration >= %u' % MIN_DURATION)
+        # Must not exceed the maximum test duration.
+        conditions.append('web100_log_entry.snap.Duration < %u' % MAX_DURATION)
+    return '\n\tAND '.join(conditions)
+
+
 class BigQueryQueryGenerator(object):
 
     database_name = 'plx.google'
@@ -36,6 +109,7 @@ class BigQueryQueryGenerator(object):
                  client_ip_blocks=None,
                  client_country=None):
         self.logger = logging.getLogger('telescope')
+        self._metric = metric
         self._select_list = self._build_select_list(metric)
         self._table_list = self._build_table_list(start_time, end_time)
         self._conditional_dict = {}
@@ -167,6 +241,8 @@ class BigQueryQueryGenerator(object):
             conditional_list_string += '\n\tAND %s' % self._conditional_dict[
                 'data_direction'
             ]
+        conditional_list_string += '\n\t AND %s' % (
+            _create_test_validity_conditional(self._metric))
 
         log_times_joined = ' OR\n\t'.join(self._conditional_dict['log_time'])
         conditional_list_string += '\n\tAND (%s)' % log_times_joined
@@ -210,13 +286,12 @@ class BigQueryQueryGenerator(object):
         self._conditional_dict['log_time'].add(new_statement)
 
     def _add_data_direction_conditional(self, metric):
-        if metric in ['download_throughput', 'minimum_rtt', 'average_rtt',
-                      'packet_retransmit_rate']:
+        if _is_server_to_client_metric(metric):
             data_direction = 1
-        elif metric in ['upload_throughput']:
+        else:
             data_direction = 0
         self._conditional_dict['data_direction'] = (
-            'connection_spec.data_direction == %d' % data_direction)
+            'connection_spec.data_direction = %d' % data_direction)
 
     def _add_client_ip_blocks_conditional(self, client_ip_blocks):
         # remove duplicates, warn if any are found

@@ -145,7 +145,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
        web100_log_entry.connection_spec.local_ip = '2.2.2.2')
@@ -183,7 +194,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212801))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1')
   AND (PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 5 AND 10)"""
@@ -215,7 +237,13 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 0
+  AND connection_spec.data_direction = 0
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.HCThruOctetsReceived >= 8192
+  AND web100_log_entry.snap.Duration >= 9000000
+  AND web100_log_entry.snap.Duration < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
        web100_log_entry.connection_spec.local_ip = '2.2.2.2')
@@ -254,7 +282,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
        web100_log_entry.connection_spec.local_ip = '2.2.2.2')
@@ -293,7 +332,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
        web100_log_entry.connection_spec.local_ip = '2.2.2.2')
@@ -331,7 +381,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
        web100_log_entry.connection_spec.local_ip = '2.2.2.2')
@@ -365,7 +426,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1')
 """
@@ -400,7 +472,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 5 AND 10)
 """
@@ -435,7 +518,18 @@ WHERE
   AND web100_log_entry.connection_spec.local_ip IS NOT NULL
   AND project = 0
   AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction == 1
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND connection_spec.client_geolocation.country_code = 'US'
 """
