@@ -103,6 +103,16 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
                                        server_ips, client_ip_blocks,
                                        client_country)
 
+    def generate_packet_retransmit_rate_query(self,
+                                              start_time,
+                                              end_time,
+                                              server_ips=None,
+                                              client_ip_blocks=None,
+                                              client_country=None):
+        return self.generate_ndt_query(start_time, end_time,
+                                       'packet_retransmit_rate', server_ips,
+                                       client_ip_blocks, client_country)
+
     def test_ndt_queries_have_no_trailing_whitespace(self):
         start_time = datetime.datetime(2012, 1, 1)
         end_time = datetime.datetime(2014, 10, 15)
@@ -126,14 +136,11 @@ class BigQueryQueryGeneratorTest(unittest.TestCase):
             start_time, end_time, server_ips, client_ip_blocks)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  8 * (web100_log_entry.snap.HCThruOctetsAcked /
+         (web100_log_entry.snap.SndLimTimeRwin +
+          web100_log_entry.snap.SndLimTimeCwnd +
+          web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
@@ -174,14 +181,11 @@ WHERE
             start_time, end_time, server_ips, client_ip_blocks)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  8 * (web100_log_entry.snap.HCThruOctetsAcked /
+         (web100_log_entry.snap.SndLimTimeRwin +
+          web100_log_entry.snap.SndLimTimeCwnd +
+          web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
   [plx.google:m_lab.2014_01.all],
   [plx.google:m_lab.2014_02.all]
@@ -221,11 +225,9 @@ WHERE
             start_time, end_time, server_ips, client_ip_blocks)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.Duration,
-  web100_log_entry.snap.HCThruOctetsReceived,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  8 * (web100_log_entry.snap.HCThruOctetsReceived /
+       web100_log_entry.snap.Duration) AS upload_mbps
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
@@ -261,16 +263,8 @@ WHERE
             start_time, end_time, server_ips, client_ip_blocks)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.CountRTT,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State,
-  web100_log_entry.snap.SumRTT
+  web100_log_entry.log_time AS timestamp,
+  (web100_log_entry.snap.SumRTT / web100_log_entry.snap.CountRTT) AS average_rtt
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
@@ -311,16 +305,51 @@ WHERE
             start_time, end_time, server_ips, client_ip_blocks)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.CountRTT,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.MinRTT,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  web100_log_entry.snap.MinRTT AS minimum_rtt
+FROM
+  [plx.google:m_lab.2014_01.all]
+WHERE
+  connection_spec.data_direction IS NOT NULL
+  AND web100_log_entry.is_last_entry IS NOT NULL
+  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
+  AND web100_log_entry.snap.CongSignals IS NOT NULL
+  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
+  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
+  AND project = 0
+  AND web100_log_entry.is_last_entry = True
+  AND connection_spec.data_direction = 1
+  AND (web100_log_entry.snap.State = 1
+       OR (web100_log_entry.snap.State >= 5
+           AND web100_log_entry.snap.State <= 11))
+  AND web100_log_entry.snap.CongSignals > 0
+  AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) >= 9000000
+  AND (web100_log_entry.snap.SndLimTimeRwin +
+       web100_log_entry.snap.SndLimTimeCwnd +
+       web100_log_entry.snap.SndLimTimeSnd) < 3600000000
+  AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
+  AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
+       web100_log_entry.connection_spec.local_ip = '2.2.2.2')
+  AND (PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 5 AND 10 OR
+       PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN 35 AND 80)"""
+
+        self.assertQueriesEqual(query_expected, query_actual)
+
+    def test_packet_retransmit_rate_query_full_month(self):
+        start_time = datetime.datetime(2014, 1, 1)
+        end_time = datetime.datetime(2014, 2, 1)
+        server_ips = ['1.1.1.1', '2.2.2.2']
+        client_ip_blocks = [(5, 10), (35, 80)]
+        query_actual = self.generate_packet_retransmit_rate_query(
+            start_time, end_time, server_ips, client_ip_blocks)
+        query_expected = """
+SELECT
+  web100_log_entry.log_time AS timestamp,
+  (web100_log_entry.snap.SegsRetrans /
+   web100_log_entry.snap.DataSegsOut) AS packet_retransmit_rate
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
@@ -362,14 +391,11 @@ WHERE
             start_time, end_time, server_ips, client_ip_blocks, client_country)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  8 * (web100_log_entry.snap.HCThruOctetsAcked /
+         (web100_log_entry.snap.SndLimTimeRwin +
+          web100_log_entry.snap.SndLimTimeCwnd +
+          web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
@@ -407,14 +433,11 @@ WHERE
         end_time = datetime.datetime(2014, 2, 1)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  8 * (web100_log_entry.snap.HCThruOctetsAcked /
+         (web100_log_entry.snap.SndLimTimeRwin +
+          web100_log_entry.snap.SndLimTimeCwnd +
+          web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
@@ -453,14 +476,11 @@ WHERE
         end_time = datetime.datetime(2014, 2, 1)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  8 * (web100_log_entry.snap.HCThruOctetsAcked /
+         (web100_log_entry.snap.SndLimTimeRwin +
+          web100_log_entry.snap.SndLimTimeCwnd +
+          web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
@@ -499,14 +519,11 @@ WHERE
         end_time = datetime.datetime(2014, 2, 1)
         query_expected = """
 SELECT
-  connection_spec.data_direction,
-  web100_log_entry.log_time,
-  web100_log_entry.snap.CongSignals,
-  web100_log_entry.snap.HCThruOctetsAcked,
-  web100_log_entry.snap.SndLimTimeCwnd,
-  web100_log_entry.snap.SndLimTimeRwin,
-  web100_log_entry.snap.SndLimTimeSnd,
-  web100_log_entry.snap.State
+  web100_log_entry.log_time AS timestamp,
+  8 * (web100_log_entry.snap.HCThruOctetsAcked /
+         (web100_log_entry.snap.SndLimTimeRwin +
+          web100_log_entry.snap.SndLimTimeCwnd +
+          web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
   [plx.google:m_lab.2014_01.all]
 WHERE
