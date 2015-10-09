@@ -96,6 +96,31 @@ def _create_test_validity_conditional(metric):
     return '\n\tAND '.join(conditions)
 
 
+def _create_select_clauses(metric):
+    clauses = ['web100_log_entry.log_time AS timestamp']
+    metric_to_clause = {
+        'download_throughput': (
+            '8 * (web100_log_entry.snap.HCThruOctetsAcked /\n\t\t'
+            '(web100_log_entry.snap.SndLimTimeRwin +\n\t\t'
+            ' web100_log_entry.snap.SndLimTimeCwnd +\n\t\t'
+            ' web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps'),
+        'upload_throughput': (
+            '8 * (web100_log_entry.snap.HCThruOctetsReceived /\n\t\t'
+            ' web100_log_entry.snap.Duration) AS upload_mbps'),
+        'minimum_rtt': (
+            'web100_log_entry.snap.MinRTT AS minimum_rtt'),
+        'average_rtt': (
+            '(web100_log_entry.snap.SumRTT / web100_log_entry.snap.CountRTT) '
+            'AS average_rtt'),
+        'packet_retransmit_rate': (
+            '(web100_log_entry.snap.SegsRetrans /\n\t\t'
+            ' web100_log_entry.snap.DataSegsOut) AS packet_retransmit_rate'),
+    }
+    clauses.append(metric_to_clause[metric])
+
+    return ',\n\t'.join(clauses)
+
+
 class BigQueryQueryGenerator(object):
 
     database_name = 'plx.google'
@@ -110,7 +135,6 @@ class BigQueryQueryGenerator(object):
                  client_country=None):
         self.logger = logging.getLogger('telescope')
         self._metric = metric
-        self._select_list = self._build_select_list(metric)
         self._table_list = self._build_table_list(start_time, end_time)
         self._conditional_dict = {}
         self._add_data_direction_conditional(metric)
@@ -175,48 +199,9 @@ class BigQueryQueryGenerator(object):
 
         return table_names
 
-    def _build_select_list(self, metric):
-
-        metric_names_to_return = set(
-            ['web100_log_entry.log_time', 'connection_spec.data_direction',
-             'web100_log_entry.snap.State'])
-        metric_data_directions = {
-            's2c': ['web100_log_entry.snap.HCThruOctetsAcked',
-                    'web100_log_entry.snap.SndLimTimeRwin',
-                    'web100_log_entry.snap.SndLimTimeCwnd',
-                    'web100_log_entry.snap.SndLimTimeSnd',
-                    'web100_log_entry.snap.CongSignals'],
-            'c2s': ['web100_log_entry.snap.HCThruOctetsReceived',
-                    'web100_log_entry.snap.Duration']
-        }
-
-        metric_types = {
-            'upload_throughput': metric_data_directions['c2s'],
-            'download_throughput': metric_data_directions['s2c'],
-            'minimum_rtt':
-            (['web100_log_entry.snap.MinRTT', 'web100_log_entry.snap.CountRTT']
-             + metric_data_directions['s2c']),
-            'average_rtt':
-            (['web100_log_entry.snap.SumRTT', 'web100_log_entry.snap.CountRTT']
-             + metric_data_directions['s2c']),
-            'packet_retransmit_rate': (['web100_log_entry.snap.SegsRetrans',
-                                        'web100_log_entry.snap.DataSegsOut'] +
-                                       metric_data_directions['s2c']),
-        }
-
-        if metric == 'all':
-            for metric_names in metric_types.itervalues():
-                metric_names_to_return |= metric_names
-        elif metric in metric_types:
-            metric_names_to_return |= set(metric_types[metric])
-        else:
-            raise ValueError('UnsupportedMetric')
-
-        sorted_metric_names = sorted(list(metric_names_to_return))
-        return sorted_metric_names
-
     def _create_query_string(self):
-        built_query_format = ('SELECT\n\t{select_list}\nFROM\n\t{table_list}\n'
+        built_query_format = ('SELECT\n\t{select_clauses}\n'
+                              'FROM\n\t{table_list}\n'
                               'WHERE\n\t{conditional_list}')
         non_null_fields = ['connection_spec.data_direction',
                            'web100_log_entry.is_last_entry',
@@ -231,7 +216,6 @@ class BigQueryQueryGenerator(object):
         for field in non_null_fields:
             non_null_conditions.append('%s IS NOT NULL' % field)
 
-        select_list_string = ',\n\t'.join(self._select_list)
         table_list_string = ',\n\t'.join(self._table_list)
 
         conditional_list_string = '\n\tAND '.join(non_null_conditions +
@@ -262,7 +246,7 @@ class BigQueryQueryGenerator(object):
             ]
 
         built_query_string = built_query_format.format(
-            select_list=select_list_string,
+            select_clauses=_create_select_clauses(self._metric),
             table_list=table_list_string,
             conditional_list=conditional_list_string)
 

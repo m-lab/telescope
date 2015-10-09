@@ -29,7 +29,6 @@ import time
 
 import external
 import iptranslation
-import metrics_math
 import mlab
 import query
 import selector
@@ -114,11 +113,8 @@ class ExternalQueryHandler(object):
                     'Received data, processing according to %s metric.',
                     self._metadata['metric'])
 
-                subset_metric_calculations = metrics_math.calculate_results_list(
-                    self._metadata['metric'], bq_query_returned_data)
-
                 write_metric_calculations_to_file(self._filepath,
-                                                  subset_metric_calculations)
+                                                  bq_query_returned_data)
                 self._has_succeeded = True
             except (ValueError, external.BigQueryJobFailure,
                     external.BigQueryCommunicationError) as caught_error:
