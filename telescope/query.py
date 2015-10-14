@@ -85,6 +85,12 @@ def _create_test_validity_conditional(metric):
             ('(web100_log_entry.snap.SndLimTimeRwin +\n\t'
              '\tweb100_log_entry.snap.SndLimTimeCwnd +\n\t'
              '\tweb100_log_entry.snap.SndLimTimeSnd) < %u') % MAX_DURATION)
+
+        # Some rows in the NDT dataset strangely have CountRTT as 0 but
+        # HCThruOctetsAcked > 0. Add a clause to prevent divide by zero errors
+        # in the query.
+        if metric == 'average_rtt':
+            conditions.append('web100_log_entry.snap.CountRTT > 0')
     else:
         # Must receive at least the minimum number of bytes.
         conditions.append(
