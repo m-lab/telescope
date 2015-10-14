@@ -396,8 +396,8 @@ def process_selector_queue(selector_queue,
     thread_monitor = []
 
     while not selector_queue.empty():
-        (bq_query_string, bq_table_span, thread_metadata, data_filepath, _
-        ) = selector_queue.get(False)
+        (bq_query_string, bq_table_span, thread_metadata, data_filepath,
+         _) = selector_queue.get(False)
 
         #  Enforce concurrent rate limit and allow fine-grain controls over batch
         #  mode. Aggressively batching also allows a fire-everything-and-wait
@@ -444,8 +444,8 @@ def process_selector_queue(selector_queue,
         external_query_handler = ExternalQueryHandler(data_filepath,
                                                       thread_metadata)
         external_query_handler.queue_set = (bq_query_string, bq_table_span,
-                                            thread_metadata, data_filepath, True
-                                           )
+                                            thread_metadata, data_filepath,
+                                            True)
 
         new_thread = threading.Thread(
             target=bq_query_call.monitor_query_queue,
@@ -568,7 +568,7 @@ def main(args):
                         None, thread_metadata.values()))
 
                     if (not external_query_handler.has_succeeded and
-                        not external_query_handler.has_failed):
+                            not external_query_handler.has_failed):
                         selector_queue.put(external_query_handler.queue_set)
                     elif external_query_handler.has_failed:
                         logger.debug('Fatal error on %s, moving along.',
