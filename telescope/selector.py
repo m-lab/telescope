@@ -103,8 +103,8 @@ class MultiSelector(object):
         selector_product = itertools.product(
             self.start_times, self.client_providers, self.client_countries,
             self.sites, self.metrics)
-        for (start_time, client_provider, client_country, site, metric
-            ) in selector_product:
+        for (start_time, client_provider, client_country, site,
+             metric) in selector_product:
             selector = Selector()
             selector.ip_translation_spec = self.ip_translation_spec
             selector.duration = self.duration
@@ -180,11 +180,11 @@ class SelectorFileParser(object):
         multi_selector.metrics = selector_json['metrics']
 
         if ('client_providers' in selector_json and
-            selector_json['client_providers']):
+                selector_json['client_providers']):
             multi_selector.client_providers = _normalize_string_values(
                 selector_json['client_providers'])
         if ('client_countries' in selector_json and
-            selector_json['client_countries']):
+                selector_json['client_countries']):
             multi_selector.client_countries = _normalize_string_values(
                 selector_json['client_countries'])
         if 'sites' in selector_json and selector_json['sites']:
