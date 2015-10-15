@@ -58,6 +58,11 @@ def _create_test_validity_conditional(metric):
     STATE_ESTABLISHED = 5
     STATE_TIME_WAIT = 11
 
+    # For RTT metrics, exclude results of tests with 10 or fewer round trip time
+    # samples, because there are not enough samples to accurately estimate the
+    # RTT.
+    MIN_RTT_SAMPLES = 10
+
     conditions = []
     # Must have completed the TCP three-way handshake.
     conditions.append(
@@ -86,11 +91,11 @@ def _create_test_validity_conditional(metric):
              '\tweb100_log_entry.snap.SndLimTimeCwnd +\n\t'
              '\tweb100_log_entry.snap.SndLimTimeSnd) < %u') % MAX_DURATION)
 
-        # Some rows in the NDT dataset strangely have CountRTT as 0 but
-        # HCThruOctetsAcked > 0. Add a clause to prevent divide by zero errors
-        # in the query.
-        if metric == 'average_rtt':
-            conditions.append('web100_log_entry.snap.CountRTT > 0')
+        # Exclude results of tests with fewer than 10 round trip time samples,
+        # because there are not enough samples to accurately estimate the RTT.
+        if metric == 'minimum_rtt' or metric == 'average_rtt':
+            conditions.append(
+                'web100_log_entry.snap.CountRTT > %u' % MIN_RTT_SAMPLES)
     else:
         # Must receive at least the minimum number of bytes.
         conditions.append(

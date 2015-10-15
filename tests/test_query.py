@@ -288,7 +288,7 @@ WHERE
   AND (web100_log_entry.snap.SndLimTimeRwin +
        web100_log_entry.snap.SndLimTimeCwnd +
        web100_log_entry.snap.SndLimTimeSnd) < 3600000000
-  AND web100_log_entry.snap.CountRTT > 0
+  AND web100_log_entry.snap.CountRTT > 10
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
        web100_log_entry.connection_spec.local_ip = '2.2.2.2')
@@ -331,6 +331,7 @@ WHERE
   AND (web100_log_entry.snap.SndLimTimeRwin +
        web100_log_entry.snap.SndLimTimeCwnd +
        web100_log_entry.snap.SndLimTimeSnd) < 3600000000
+  AND web100_log_entry.snap.CountRTT > 10
   AND ((web100_log_entry.log_time >= 1388534400) AND (web100_log_entry.log_time < 1391212800))
   AND (web100_log_entry.connection_spec.local_ip = '1.1.1.1' OR
        web100_log_entry.connection_spec.local_ip = '2.2.2.2')
