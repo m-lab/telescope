@@ -228,9 +228,8 @@ class BigQueryQueryGenerator(object):
                                                   tool_specific_conditions)
 
         if 'data_direction' in self._conditional_dict:
-            conditional_list_string += '\n\tAND %s' % self._conditional_dict[
-                'data_direction'
-            ]
+            conditional_list_string += '\n\tAND %s' % (
+                self._conditional_dict['data_direction'])
         conditional_list_string += '\n\t AND %s' % (
             _create_test_validity_conditional(self._metric))
 
@@ -247,9 +246,8 @@ class BigQueryQueryGenerator(object):
                 self._conditional_dict['client_ip_blocks'])
             conditional_list_string += '\n\tAND (%s)' % client_ip_blocks_joined
         if 'client_country' in self._conditional_dict:
-            conditional_list_string += '\n\tAND %s' % self._conditional_dict[
-                'client_country'
-            ]
+            conditional_list_string += '\n\tAND %s' % (
+                self._conditional_dict['client_country'])
 
         built_query_string = built_query_format.format(
             select_clauses=_create_select_clauses(self._metric),
@@ -267,11 +265,11 @@ class BigQueryQueryGenerator(object):
             (start_time_datetime - utc_absolutely_utc).total_seconds())
         end_time = int((end_time_datetime - utc_absolutely_utc).total_seconds())
 
-        new_statement = ('(web100_log_entry.log_time >= {start_time})'
-                         ' AND (web100_log_entry.log_time < {end_time})'
-                        ).format(
-                            start_time=start_time,
-                            end_time=end_time)
+        new_statement = (
+            '(web100_log_entry.log_time >= {start_time})'
+            ' AND (web100_log_entry.log_time < {end_time})').format(
+                start_time=start_time,
+                end_time=end_time)
 
         self._conditional_dict['log_time'].add(new_statement)
 
@@ -317,7 +315,6 @@ class BigQueryQueryGenerator(object):
             self._conditional_dict['server_ips'].append(new_statement)
 
     def _add_client_country_conditional(self, client_country):
-        self._conditional_dict[
-            'client_country'
-        ] = 'connection_spec.client_geolocation.country_code = \'%s\'' % client_country.upper(
-        )
+        self._conditional_dict['client_country'] = (
+            'connection_spec.client_geolocation.country_code = \'%s\'' % (
+                client_country.upper()))

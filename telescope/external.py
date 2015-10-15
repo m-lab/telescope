@@ -333,8 +333,8 @@ class BigQueryCall:
             self.logger.error(
                 'HTTP error when running asynchronous query: {error}'.format(
                     error=caught_http_error.resp))
-        except (Exception, httplib2.ServerNotFoundError
-               ) as caught_generic_error:
+        except (Exception,
+                httplib2.ServerNotFoundError) as caught_generic_error:
             self.logger.error(
                 'Unknown error when running asynchronous query: {error}'.format(
                     error=caught_generic_error))
@@ -385,9 +385,9 @@ class BigQueryCall:
                             'Waiting for %s to submit, spent %d seconds so '
                             'far.', notification_identifier, time_waiting)
                         time.sleep(60)
-                    elif job_collection_state['status'][
-                            'state'
-                    ] == 'DONE' and callback_function is not None:
+                    elif (
+                        (job_collection_state['status']['state'] == 'DONE') and
+                            callback_function is not None):
                         self.logger.info('Found completion status for %s.',
                                          notification_identifier)
                         callback_function(job_id, query_object=self)
