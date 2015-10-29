@@ -26,45 +26,40 @@ import utils
 
 class UtilsTest(unittest.TestCase):
 
-  def testStripSpecialCharacters(self):
-    self.assertEquals('att.csv', utils.strip_special_chars('at&t.csv'))
-    self.assertEquals('att.csv', utils.strip_special_chars('at&&&&&&&&t.csv'))
-    self.assertEquals('att.csv', utils.strip_special_chars('at&&/;$&&&&&&t.csv'))
-    self.assertEquals('maxmin-counts.csv', utils.strip_special_chars('max/min-counts.csv'))
-    self.assertEquals('namesplacesdates.csv', utils.strip_special_chars(r'names\places\dates.csv'))
-    self.assertEquals('spaces are okay.csv', utils.strip_special_chars('spaces are okay.csv'))
+    def testStripSpecialCharacters(self):
+        self.assertEquals('att.csv', utils.strip_special_chars('at&t.csv'))
+        self.assertEquals('att.csv',
+                          utils.strip_special_chars('at&&&&&&&&t.csv'))
+        self.assertEquals('att.csv',
+                          utils.strip_special_chars('at&&/;$&&&&&&t.csv'))
+        self.assertEquals('maxmin-counts.csv',
+                          utils.strip_special_chars('max/min-counts.csv'))
+        self.assertEquals('namesplacesdates.csv',
+                          utils.strip_special_chars(r'names\places\dates.csv'))
+        self.assertEquals('spaces are okay.csv',
+                          utils.strip_special_chars('spaces are okay.csv'))
 
-  def testFilenameBuilder_CompleteParameterSet(self):
-    fake_filepath = utils.build_filename('/tmp/path/',
-                                         '2014-02-01',
-                                         '30d',
-                                         'iad01',
-                                         'comcast',
-                                         'us',
-                                         'download_throughput',
-                                         '-fake.txt')
-    expected_filepath = '/tmp/path/2014-02-01+30d_iad01_us_comcast_download_throughput-fake.txt'
-    self.assertEquals(expected_filepath, fake_filepath)
+    def testFilenameBuilder_CompleteParameterSet(self):
+        fake_filepath = utils.build_filename(
+            '/tmp/path/', '2014-02-01', '30d', 'iad01', 'comcast', 'us',
+            'download_throughput', '-fake.txt')
+        expected_filepath = '/tmp/path/2014-02-01+30d_iad01_us_comcast_download_throughput-fake.txt'
+        self.assertEquals(expected_filepath, fake_filepath)
 
-  def testFilenameBuilder_ParameterSetMissingOptionalValues(self):
-    """Tests that omitted options are properly handled in building of filenames.
+    def testFilenameBuilder_ParameterSetMissingOptionalValues(self):
+        """Tests that omitted options are properly handled in building of filenames.
     
     Where not specificied in the selector file, the parameter will be passed
     as None. The None value should be skipped in filename building, so this
     unit test checks that optional parameters that are not defined are properly
     handled by `build_filename`.
     """
-    fake_filepath = utils.build_filename('/tmp/path/',
-                                         '2015-02-01',
-                                         '31d',
-                                         None,
-                                         None,
-                                         'ca',
-                                         'minimum_rtt',
-                                         '-bigquery.sql')
-    expected_filepath = '/tmp/path/2015-02-01+31d_ca_minimum_rtt-bigquery.sql'
-    self.assertEquals(expected_filepath, fake_filepath)
+        fake_filepath = utils.build_filename('/tmp/path/', '2015-02-01', '31d',
+                                             None, None, 'ca', 'minimum_rtt',
+                                             '-bigquery.sql')
+        expected_filepath = '/tmp/path/2015-02-01+31d_ca_minimum_rtt-bigquery.sql'
+        self.assertEquals(expected_filepath, fake_filepath)
 
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

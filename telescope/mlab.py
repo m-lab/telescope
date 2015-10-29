@@ -19,52 +19,54 @@ import socket
 
 
 class DNSResolutionError(Exception):
-  def __init__(self, hostname):
-    Exception.__init__(self, 'Failed to resolve hostname `%s\'' % hostname)
+
+    def __init__(self, hostname):
+        Exception.__init__(self, 'Failed to resolve hostname `%s\'' % hostname)
 
 
 class MLabSiteResolver(object):
-  def __init__(self):
-    self._cache = {}
 
-  def get_site_ndt_ips(self, site_id):
-    """Get a list of a Measurement Lab site and slice's addresses.
+    def __init__(self):
+        self._cache = {}
 
-    Args:
-      site_id (str): M-Lab site identifier, should be an airport code and
-        a two-digit number.
+    def get_site_ndt_ips(self, site_id):
+        """Get a list of a Measurement Lab site and slice's addresses.
 
-    Returns:
-      list: List of the IP addresses associated with the slices for a tool
-        running on the location's M-Lab nodes.
+        Args:
+            site_id (str): M-Lab site identifier, should be an airport code and
+                a two-digit number.
 
-    Notes:
-      * Different tools generally have their own IP addresses per node. Where
-        they do not, the difference should be handled transparently by this
-        function.
-    """
-    node_addresses_to_return = []
+        Returns:
+            list: List of the IP addresses associated with the slices for a tool
+                running on the location's M-Lab nodes.
 
-    for node_id in ['mlab1', 'mlab2', 'mlab3']:
-      slice_hostname = self._generate_hostname(site_id, node_id)
-      ip_address = self._resolve_hostname(slice_hostname)
-      node_addresses_to_return.append(ip_address)
+        Notes:
+            * Different tools generally have their own IP addresses per node.
+              Where they do not, the difference should be handled transparently
+              by this function.
+        """
+        node_addresses_to_return = []
 
-    return node_addresses_to_return
+        for node_id in ['mlab1', 'mlab2', 'mlab3']:
+            slice_hostname = self._generate_hostname(site_id, node_id)
+            ip_address = self._resolve_hostname(slice_hostname)
+            node_addresses_to_return.append(ip_address)
 
-  def _generate_hostname(self, site_id, node_id):
-    hostname = 'ndt.iupui.{node_id}.{site_id}.measurement-lab.org'.format(
-        node_id=node_id, site_id=site_id)
-    return hostname
+        return node_addresses_to_return
 
-  def _resolve_hostname(self, hostname):
-    if hostname in self._cache:
-      return self._cache[hostname]
+    def _generate_hostname(self, site_id, node_id):
+        hostname = 'ndt.iupui.{node_id}.{site_id}.measurement-lab.org'.format(
+            node_id=node_id,
+            site_id=site_id)
+        return hostname
 
-    try:
-      ip_address = socket.gethostbyname(hostname)
-    except socket.gaierror:
-      raise DNSResolutionError(hostname)
-    self._cache[hostname] = ip_address
-    return ip_address
+    def _resolve_hostname(self, hostname):
+        if hostname in self._cache:
+            return self._cache[hostname]
 
+        try:
+            ip_address = socket.gethostbyname(hostname)
+        except socket.gaierror:
+            raise DNSResolutionError(hostname)
+        self._cache[hostname] = ip_address
+        return ip_address
