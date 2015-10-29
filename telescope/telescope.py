@@ -494,8 +494,8 @@ def main(args):
                 '-bigquery.sql')
             write_bigquery_to_file(bigquery_filepath, bq_query_string)
         if not args.dryrun:
-            # Offer Queue a tuple of the BQ statement, BQ table span, metadata, and a
-            # boolean that indicates that the loop has not attempted to run the query
+            # Offer Queue a tuple of the BQ statement, metadata, and a boolean
+            # that indicates that the loop has not attempted to run the query
             # thus far (failed queries are pushed back to the end of the loop).
             selector_queue.put((bq_query_string, thread_metadata, data_filepath,
                                 False))
