@@ -34,8 +34,7 @@ import query
 import selector
 import utils
 
-MAX_THREADS_NORMAL_MODE = 18
-MAX_THREADS_BATCH_MODE = 100
+MAX_THREADS = 100
 
 
 class TelescopeError(Exception):
@@ -303,7 +302,7 @@ def generate_query(selector, ip_translator, mlab_site_resolver):
         server_ips=server_ips,
         client_ip_blocks=client_ip_blocks,
         client_country=selector.client_country)
-    return (query_generator.query(), query_generator.table_span())
+    return query_generator.query()
 
 
 def duration_to_string(duration_seconds):
@@ -366,10 +365,7 @@ def wait_to_respect_thread_limit(concurrent_thread_limit, queue_size):
         active_thread_count = threading.activeCount()
 
 
-def process_selector_queue(selector_queue,
-                           google_auth_config,
-                           batchmode='automatic',
-                           max_tables_without_batch=2):
+def process_selector_queue(selector_queue, google_auth_config):
     """Processes the queue of Selector objects waiting for processing.
 
     Processes the queue of Selector objects by launching BigQuery jobs for each
@@ -381,11 +377,6 @@ def process_selector_queue(selector_queue,
         selector_queue: (Queue.Queue) A queue of Selector objects to process.
         google_auth_config: (external.GoogleAPIAuth) Object containing GoogleAPI
             auth data.
-        batchmode: (str) Indicates the batch mode to operate under.
-        max_tables_without_batch: (int) When batchmode is set to 'query', this
-            indicates the maximum number of database tables that can appear in
-            the SELECT portion of a query before the job is automatically
-            converted to batch mode.
 
     Returns:
         (list) A list of 2-tuples where the first element is the spawned worker
@@ -396,37 +387,18 @@ def process_selector_queue(selector_queue,
     thread_monitor = []
 
     while not selector_queue.empty():
-        (bq_query_string, bq_table_span, thread_metadata, data_filepath,
+        (bq_query_string, thread_metadata, data_filepath,
          _) = selector_queue.get(False)
-
-        #  Enforce concurrent rate limit and allow fine-grain controls over batch
-        #  mode. Aggressively batching also allows a fire-everything-and-wait
-        #  strategy, so we will skip the queue rate.
-        max_tables_without_batch = 2
-        if batchmode == 'all':
-            is_batched_query = True
-        elif batchmode == 'automatic' and bq_table_span > max_tables_without_batch:
-            logger.info(
-                ('Found %d tables, when the maximum for non-batched mode is '
-                 '%d. Setting query to batched mode (this will increase the '
-                 'amount of time but lower failure rate). This behavior can '
-                 'be controled with the --batchmode argument.'), bq_table_span,
-                max_tables_without_batch)
-            is_batched_query = True
-        else:
-            is_batched_query = False
 
         try:
             bq_query_call = external.BigQueryCall(google_auth_config)
-            bq_job_id = bq_query_call.run_asynchronous_query(
-                bq_query_string,
-                batch_mode=is_batched_query)
+            bq_job_id = bq_query_call.run_asynchronous_query(bq_query_string)
         except (SSLError, external.BigQueryJobFailure,
                 external.BigQueryCommunicationError) as caught_error:
             logger.warn('Caught request error %s on query, cooling down for a '
                         'minute.', caught_error)
-            selector_queue.put((bq_query_string, bq_table_span, thread_metadata,
-                                data_filepath, True))
+            selector_queue.put((bq_query_string, thread_metadata, data_filepath,
+                                True))
             time.sleep(60)
             bq_job_id = None
 
@@ -437,15 +409,14 @@ def process_selector_queue(selector_queue,
                      thread_count=threading.activeCount(),
                      **
                      thread_metadata))
-            selector_queue.put((bq_query_string, bq_table_span, thread_metadata,
-                                data_filepath, True))
+            selector_queue.put((bq_query_string, thread_metadata, data_filepath,
+                                True))
             continue
 
         external_query_handler = ExternalQueryHandler(data_filepath,
                                                       thread_metadata)
-        external_query_handler.queue_set = (bq_query_string, bq_table_span,
-                                            thread_metadata, data_filepath,
-                                            True)
+        external_query_handler.queue_set = (bq_query_string, thread_metadata,
+                                            data_filepath, True)
 
         new_thread = threading.Thread(
             target=bq_query_call.monitor_query_queue,
@@ -455,10 +426,7 @@ def process_selector_queue(selector_queue,
         new_thread.start()
         thread_monitor.append((new_thread, external_query_handler))
 
-        if is_batched_query:
-            concurrent_thread_limit = MAX_THREADS_BATCH_MODE
-        else:
-            concurrent_thread_limit = MAX_THREADS_NORMAL_MODE
+        concurrent_thread_limit = MAX_THREADS
         wait_to_respect_thread_limit(concurrent_thread_limit,
                                      selector_queue.qsize())
 
@@ -507,7 +475,7 @@ def main(args):
         try:
             ip_translator = ip_translator_factory.create(
                 selector.ip_translation_spec)
-            bq_query_string, bq_table_span = generate_query(
+            bq_query_string = generate_query(
                 selector, ip_translator, mlab_site_resolver)
         except MLabServerResolutionFailed as caught_error:
             logger.error('Failed to resolve M-Lab servers: %s', caught_error)
@@ -526,11 +494,11 @@ def main(args):
                 '-bigquery.sql')
             write_bigquery_to_file(bigquery_filepath, bq_query_string)
         if not args.dryrun:
-            # Offer Queue a tuple of the BQ statement, BQ table span, metadata, and a
-            # boolean that indicates that the loop has not attempted to run the query
+            # Offer Queue a tuple of the BQ statement, metadata, and a boolean
+            # that indicates that the loop has not attempted to run the query
             # thus far (failed queries are pushed back to the end of the loop).
-            selector_queue.put((bq_query_string, bq_table_span, thread_metadata,
-                                data_filepath, False))
+            selector_queue.put((bq_query_string, thread_metadata, data_filepath,
+                                False))
         else:
             logger.warn(
                 'Dry run flag caught, built query and reached the point that '
@@ -555,10 +523,8 @@ def main(args):
                 return None
 
             while not selector_queue.empty():
-                thread_monitor = process_selector_queue(
-                    selector_queue,
-                    google_auth_config,
-                    batchmode=args.batchmode)
+                thread_monitor = process_selector_queue(selector_queue,
+                                                        google_auth_config)
 
                 for (existing_thread, external_query_handler) in thread_monitor:
                     existing_thread.join()
@@ -628,11 +594,6 @@ if __name__ == '__main__':
         action='store_true',
         help=('Authenticate to Google using another method than a'
               ' local webserver.'))
-    parser.add_argument(
-        '--batchmode',
-        default='automatic',
-        choices=['all', 'automatic', 'none'],
-        help='Control how batch mode is used to query BigQuery.')
     parser.add_argument(
         '--credentialspath',
         dest='credentials_filepath',

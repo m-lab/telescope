@@ -308,7 +308,7 @@ class BigQueryCall:
             self.authenticated_service.jobs(), self.project_id)
         return result_collector.collect_results(job_id)
 
-    def run_asynchronous_query(self, query_string, batch_mode=False):
+    def run_asynchronous_query(self, query_string):
         job_reference_id = None
 
         if self.project_id is None:
@@ -321,9 +321,6 @@ class BigQueryCall:
             job_definition = {
                 'configuration': {'query': {'query': query_string}}
             }
-
-            if batch_mode is True:
-                job_definition['configuration']['query']['priority'] = 'BATCH'
 
             job_collection_insert = job_collection.insert(
                 projectId=self.project_id,
