@@ -43,7 +43,7 @@ client_providers: ['twc']
     },
     "sites": ["lga01"],
     "client_providers": ["Verizon"],
-    "start_time": "2014-07-01T00:00:00Z"
+    "start_times": ["2014-07-01T00:00:00Z"]
 }
 ```
 
@@ -67,7 +67,7 @@ client_providers: ['twc']
 
 `params`: Specifies the parameters to the IP translation strategy.
 
-`db_snapshots`: Specifies the snapshot dates (in YYYY-MM-DD format) of the MaxMind databases that are required to resolve IP addresses to providers. This field is optional. If not specified or specified as an empty list, consuming programs should use database snapshots closest in time to the snapshots specified and should suppress warnings to the user about missing snapshots.
+`db_snapshots`: Specifies the snapshot dates (in YYYY-MM-DD format) of the MaxMind databases that are required to resolve IP addresses to providers. 
 
 `sites` _(optional)_: A list of M-Lab sites, where each value in the list is an M-Lab site name (e.g. lga01). Telescope will retrieve results for NDT tests that users performed against each of the specified M-Lab sites.
 
@@ -80,14 +80,14 @@ client_providers: ['twc']
 
 `client_countries` _(optional)_: A list of ISO 3166-1 alpha-2 country code(s) associated with the IP address of the measurement client, as recorded within BigQuery. 
 
-`start_times`: List of start times of the window in which to collect test results (in ISO 8601 format). Start time values must end in `Z` (i.e. only UTC time zone is supported).
+`start_times`: List of start times of the window in which to collect test results (in ISO 8601 format). Start time values must end in `Z` (i.e. only UTC time zone is supported) and the date and time must be separated by T. For example a start time of 2:00 pm on Jan 5, 2014 would be formatted "2014-01-05T02:00:00Z".
 
 # Changelog 
 
 ## As of version 1.1
 
 * Added optional `client_countries` property.
-* The properties `metric`, `client_provider` and `site` are now represented by the lists `metrics`, `client_providers` and `sites`. 
+* The properties `metric`, `client_provider`, `start_time` and `site` are now represented by the lists `metrics`, `client_providers`, `start_times` and `sites`. 
 * Made `client_providers` and `sites` optional.
 
 # Deprecated
