@@ -135,7 +135,7 @@ def _create_select_clauses(metric):
 class BigQueryQueryGenerator(object):
 
     database_name = 'plx.google'
-    table_format = '[{database_name}:m_lab.{table_date}.all]'
+    table_format = '{database_name}:m_lab.ndt.all'
 
     def __init__(self,
                  start_time,
@@ -146,7 +146,7 @@ class BigQueryQueryGenerator(object):
                  client_country=None):
         self.logger = logging.getLogger('telescope')
         self._metric = metric
-        self._table_list = self._build_table_list(start_time, end_time)
+        self._table = BigQueryQueryGenerator.table_format.format(database_name=self.database_name)
         self._conditional_dict = {}
         self._add_data_direction_conditional(metric)
         self._add_log_time_conditional(start_time, end_time)
@@ -162,57 +162,10 @@ class BigQueryQueryGenerator(object):
     def query(self):
         return self._query
 
-    def table_span(self):
-        return len(self._table_list)
-
-    def _build_table_list(self, start_time, end_time):
-        """Enumerates monthly BigQuery tables covered between two datetime objects.
-
-        Args:
-            start_time: (datetime) Start date that the queried tables should
-                cover.
-            end_time: (datetime) End date that the queried tables should cover.
-        Returns:
-            list: List of M-Lab tables covering the dates passed to function.
-
-        Notes:
-            * Rounds the start down to the first day of month, and rounds the
-              end to the last day, so that rrule's enumeration of months does
-              not fall short due to the duration of the search being less that
-              the length of a month. The latter occurs through rounding the end
-              date down to the first second of the first day of that month,
-              using relative delta to add another month to the date and then
-              subtracting one second.
-
-            * Between these two periods, rrule enumerates datetime objects that
-              we use to build table names from the class-defined string format.
-        """
-        table_names = []
-
-        start_time_fixed = datetime.datetime(start_time.year, start_time.month,
-                                             1)
-        end_time_inclusive = end_time - datetime.timedelta(seconds=1)
-        end_time_fixed = (
-            datetime.datetime(end_time_inclusive.year, end_time_inclusive.month,
-                              1) + dateutil.relativedelta.relativedelta(
-                                  months=1) - datetime.timedelta(seconds=1))
-
-        months = rrule.rrule(rrule.MONTHLY,
-                             dtstart=start_time_fixed).between(
-                                 start_time_fixed,
-                                 end_time_fixed,
-                                 inc=True)
-        for iterated_month in months:
-            iterated_table = BigQueryQueryGenerator.table_format.format(
-                database_name=self.database_name,
-                table_date=iterated_month.strftime('%Y_%m'))
-            table_names.append(iterated_table)
-
-        return table_names
 
     def _create_query_string(self):
         built_query_format = ('SELECT\n\t{select_clauses}\n'
-                              'FROM\n\t{table_list}\n'
+                              'FROM\n\t{table}\n'
                               'WHERE\n\t{conditional_list}')
         non_null_fields = ['connection_spec.data_direction',
                            'web100_log_entry.is_last_entry',
@@ -227,7 +180,7 @@ class BigQueryQueryGenerator(object):
         for field in non_null_fields:
             non_null_conditions.append('%s IS NOT NULL' % field)
 
-        table_list_string = ',\n\t'.join(self._table_list)
+        table_string = self._table
 
         conditional_list_string = '\n\tAND '.join(non_null_conditions +
                                                   tool_specific_conditions)
@@ -256,7 +209,7 @@ class BigQueryQueryGenerator(object):
 
         built_query_string = built_query_format.format(
             select_clauses=_create_select_clauses(self._metric),
-            table_list=table_list_string,
+            table=table_string,
             conditional_list=conditional_list_string)
 
         return built_query_string
