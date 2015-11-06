@@ -134,8 +134,7 @@ def _create_select_clauses(metric):
 
 class BigQueryQueryGenerator(object):
 
-    database_name = 'plx.google'
-    table_format = '{database_name}:m_lab.ndt.all'
+    table = 'plx.google:m_lab.ndt.all'
 
     def __init__(self,
                  start_time,
@@ -146,7 +145,6 @@ class BigQueryQueryGenerator(object):
                  client_country=None):
         self.logger = logging.getLogger('telescope')
         self._metric = metric
-        self._table = BigQueryQueryGenerator.table_format.format(database_name=self.database_name)
         self._conditional_dict = {}
         self._add_data_direction_conditional(metric)
         self._add_log_time_conditional(start_time, end_time)
@@ -161,7 +159,6 @@ class BigQueryQueryGenerator(object):
 
     def query(self):
         return self._query
-
 
     def _create_query_string(self):
         built_query_format = ('SELECT\n\t{select_clauses}\n'
@@ -179,8 +176,6 @@ class BigQueryQueryGenerator(object):
         non_null_conditions = []
         for field in non_null_fields:
             non_null_conditions.append('%s IS NOT NULL' % field)
-
-        table_string = self._table
 
         conditional_list_string = '\n\tAND '.join(non_null_conditions +
                                                   tool_specific_conditions)
@@ -209,7 +204,7 @@ class BigQueryQueryGenerator(object):
 
         built_query_string = built_query_format.format(
             select_clauses=_create_select_clauses(self._metric),
-            table=table_string,
+            table=self.table,
             conditional_list=conditional_list_string)
 
         return built_query_string
