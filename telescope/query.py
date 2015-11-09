@@ -233,7 +233,7 @@ class BigQueryQueryGenerator(object):
             'connection_spec.data_direction = %d' % data_direction)
 
     def _add_client_ip_blocks_conditional(self, client_ip_blocks):
-        # remove duplicates, warn if any are founds
+        # remove duplicates, warn if any are found
         unique_client_ip_blocks = list(set(client_ip_blocks))
         if len(client_ip_blocks) != len(unique_client_ip_blocks):
             self.logger.warning('Client IP blocks contained duplicates.')
