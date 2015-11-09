@@ -134,8 +134,6 @@ def _create_select_clauses(metric):
 
 class BigQueryQueryGenerator(object):
 
-    table = 'plx.google:m_lab.ndt.all'
-
     def __init__(self,
                  start_time,
                  end_time,
@@ -204,7 +202,7 @@ class BigQueryQueryGenerator(object):
 
         built_query_string = built_query_format.format(
             select_clauses=_create_select_clauses(self._metric),
-            table=self.table,
+            table='plx.google:m_lab.ndt.all',
             conditional_list=conditional_list_string)
 
         return built_query_string
@@ -235,7 +233,7 @@ class BigQueryQueryGenerator(object):
             'connection_spec.data_direction = %d' % data_direction)
 
     def _add_client_ip_blocks_conditional(self, client_ip_blocks):
-        # remove duplicates, warn if any are found
+        # remove duplicates, warn if any are founds
         unique_client_ip_blocks = list(set(client_ip_blocks))
         if len(client_ip_blocks) != len(unique_client_ip_blocks):
             self.logger.warning('Client IP blocks contained duplicates.')
