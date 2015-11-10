@@ -80,7 +80,7 @@ client_providers: ['twc']
 
 `client_countries` _(optional)_: A list of ISO 3166-1 alpha-2 country code(s) associated with the IP address of the measurement client, as recorded within BigQuery. 
 
-`start_times`: List of start times of the window in which to collect test results (in ISO 8601 format). Start time values must end in `Z` (i.e. only UTC time zone is supported) and the date and time must be separated by T. For example a start time of 2:00 pm on Jan 5, 2014 would be formatted "2014-01-05T02:00:00Z".
+`start_times`: List of start times of the window in which to collect test results (in ISO 8601 format). Start time values must end in `Z` (i.e. only UTC time zone is supported) and the date and time must be separated by T. For example a start time of 2:00 am on Jan 5, 2014 would be formatted "2014-01-05T02:00:00Z".
 
 # Changelog 
 
