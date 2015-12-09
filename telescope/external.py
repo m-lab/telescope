@@ -58,7 +58,7 @@ class BigQueryCommunicationError(Exception):
     def __init__(self, message, cause):
         self.cause = cause
         super(BigQueryCommunicationError, self).__init__(
-            '%s (%s)' % (message, self.cause))
+            '%s (%s)' % (message, self.cause))  #FERN: something weird with constructor. Fix later, pass tests now.
 
 
 class TableDoesNotExist(Exception):
@@ -292,20 +292,18 @@ class BigQueryJobResultCollector(object):
 
 class BigQueryCall:
 
-    def __init__(self, google_auth_config):
+    def __init__(self, google_auth_config, authenticated_service):
         self.logger = logging.getLogger('telescope')
+        self._authenticated_service= authenticated_service #FERN: does authenticated_service.jobs keep changing? if not: replace this with jobs
 
         try:
-            self.authenticated_service = (
-                google_auth_config.authenticate_with_google())
             self.project_id = google_auth_config.project_id
-        except (SSLError, AttributeError, HttpError,
-                httplib2.ServerNotFoundError, ResponseNotReady) as e:
-            raise BigQueryCommunicationError(None, e)
+        except (AttributeError) as e: #FERN: make sure we're catching the right thing
+            raise BigQueryCommunicationError(None, e)  #FERN: feels wrong
 
     def retrieve_job_data(self, job_id):
         result_collector = BigQueryJobResultCollector(
-            self.authenticated_service.jobs(), self.project_id)
+            self._authenticated_service.jobs(), self.project_id)
         return result_collector.collect_results(job_id)
 
     def run_asynchronous_query(self, query_string):
@@ -317,7 +315,7 @@ class BigQueryCall:
             return None
 
         try:
-            job_collection = self.authenticated_service.jobs()
+            job_collection = self._authenticated_service.jobs()
             job_definition = {
                 'configuration': {'query': {'query': query_string}}
             }
@@ -326,15 +324,10 @@ class BigQueryCall:
                 projectId=self.project_id,
                 body=job_definition).execute()
             job_reference_id = job_collection_insert['jobReference']['jobId']
-        except (HttpError, ResponseNotReady) as caught_http_error:
-            self.logger.error(
-                'HTTP error when running asynchronous query: {error}'.format(
-                    error=caught_http_error.resp))
-        except (Exception,
-                httplib2.ServerNotFoundError) as caught_generic_error:
-            self.logger.error(
-                'Unknown error when running asynchronous query: {error}'.format(
-                    error=caught_generic_error))
+        except (HttpError, ResponseNotReady) as e:
+            raise BigQueryCommunicationError('Query failed with %s:\n %s', e.message)
+        except Exception as e: #FERN: feels wrong
+            raise BigQueryCommunicationError('Query failed with %s:\n %s', e.message)  #FERN: should the print outs look identical? also formatting
 
         return job_reference_id
 
@@ -356,7 +349,7 @@ class BigQueryCall:
 
             while True:
                 try:
-                    job_collection = query_object.authenticated_service.jobs()
+                    job_collection = query_object._authenticated_service.jobs()  #FERN: make sure if query_object: we can still call _authenticated. else: resolve
                     job_collection_state = job_collection.get(
                         projectId=self.project_id,
                         jobId=job_id).execute()

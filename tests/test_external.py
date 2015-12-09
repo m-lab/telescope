@@ -23,6 +23,8 @@ import unittest
 import apiclient
 import mock
 
+from httplib import ResponseNotReady
+
 sys.path.insert(1, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../telescope')))
 import external
@@ -69,6 +71,93 @@ def _construct_mock_bigquery_response(mock_rows):
     mock_response['totalRows'] = len(mock_response['rows'])
     return mock_response
 
+class BigQueryCallTest(unittest.TestCase): 
+    """
+        def run_asynchronous_query(self, query_string):
+            job_reference_id = None
+
+            if self.project_id is None:
+                self.logger.error(
+                    'Cannot continue since I have not found a project id.')
+                return None
+
+            try:
+                job_collection = self._authenticated_service.jobs()
+                job_definition = {
+                    'configuration': {'query': {'query': query_string}}
+                }
+
+                job_collection_insert = job_collection.insert(
+                    projectId=self.project_id,
+                    body=job_definition).execute()
+                job_reference_id = job_collection_insert['jobReference']['jobId']
+            except (HttpError, ResponseNotReady) as e:
+                raise BigQueryCommunicationError('Query failed with %s:\n %s', e.resp, query_string)
+            except Exception as e:
+                raise BigQueryCommunicationError('Query failed with %s:\n %s', e.message, query_string)
+            return job_reference_id
+    """
+    #FERN: take out the above comment
+
+    def setUp(self): 
+        # Mock out calls to time.sleep to keep tests running quickly
+        #sleep_patch = mock.patch.object(time, 'sleep', autospec=True)
+        #self.addCleanup(sleep_patch.stop)
+        #sleep_patch.start()  #FERN: might need for later tests, not now
+
+        self.mock_google_auth_config = mock.Mock()
+        self.mock_authenticated_service= mock.Mock()
+        self.call= external.BigQueryCall(self.mock_google_auth_config, self.mock_authenticated_service)
+
+    #FERN: returns a job ID
+    def test_run_asynchronous_query_success(self):   
+        """
+
+        {
+            'kind': 'bigquery#queryResponse', 
+            'rows': [{'f': [{'v': 'hamlet'}, {'v': '5318'}]}],
+            'jobReference': {'projectId': 'measurement-lab', 'jobId': 'job_iM-fUUpP93900XGHnxHjU9eTdks'}, 
+            'jobComplete': True, 
+            'totalRows': '10', 
+            'totalBytesProcessed': '0', 
+            'cacheHit': True, 
+            'schema': {u'fields': [{u'type': u'STRING', u'name': u'title', u'mode': u'NULLABLE'}, {u'type': u'INTEGER', u'name': u'unique_words', u'mode': u'NULLABLE'}]}
+        }
+        """
+        #FERN: remove above
+
+        #FERN: not sure what I should be testing? Maybe rewrite code? 
+        mock_job_collection= mock.Mock()
+        mock_job_collection_insert= mock.Mock()
+        
+        self.mock_authenticated_service.jobs.return_value= mock_job_collection
+        mock_job_collection.insert.return_value= mock_job_collection_insert
+        mock_job_collection_insert.execute.return_value= {'jobReference': {'projectId': 'measurement-lab', 'jobId': 'dummy_id'}}
+
+        jobIdExpected= "dummy_id"
+        jobIdActual= self.call.run_asynchronous_query('dummy_query_string')
+        
+        self.assertEqual(jobIdExpected, jobIdActual)
+
+
+    def test_run_asynchronous_query_httpError(self): 
+        self.mock_google_auth_config.jobs.side_effect= MockHttpError(404)
+
+        with self.assertRaises(external.BigQueryCommunicationError):
+            self.call.run_asynchronous_query('dummy_query_string')
+
+    #FERN: WHAT?? WHY??
+    # def test_run_asynchronous_query_responseNotReady(self): 
+    #     self.mock_google_auth_config.jobs.side_effect= ResponseNotReady
+        
+    #     with self.assertRaises(ResponseNotReady):
+    #         self.call.run_asynchronous_query('dummy_query_string')
+    
+    def test_run_asynchronous_query_genericException(self): 
+        self.mock_google_auth_config.jobs.side_effect= Exception()
+        
+        with self.assertRaises(external.BigQueryCommunicationError):
+            self.call.run_asynchronous_query('dummy_query_string')
 
 class BigQueryJobResultCollectorTest(unittest.TestCase):
 
