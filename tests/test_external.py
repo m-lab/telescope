@@ -23,6 +23,8 @@ import unittest
 import apiclient
 import mock
 
+from httplib import ResponseNotReady
+
 sys.path.insert(1, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../telescope')))
 import external
@@ -69,6 +71,56 @@ def _construct_mock_bigquery_response(mock_rows):
     mock_response['totalRows'] = len(mock_response['rows'])
     return mock_response
 
+class BigQueryCallTest(unittest.TestCase): 
+
+    def setUp(self): 
+ 
+        self.mock_google_auth_config = mock.Mock()
+        self.mock_authenticated_service= mock.Mock()
+        self.call= external.BigQueryCall(self.mock_google_auth_config, self.mock_authenticated_service)
+
+    def test_run_asynchronous_query_success(self):   
+
+        mock_job_collection= mock.Mock()
+        mock_job_collection_insert= mock.Mock()
+        
+        self.mock_authenticated_service.jobs.return_value= mock_job_collection
+        mock_job_collection.insert.return_value= mock_job_collection_insert
+        mock_job_collection_insert.execute.return_value= {'jobReference': {'projectId': 'measurement-lab', 'jobId': 'dummy_id'}}
+
+        jobIdExpected= "dummy_id"
+        jobIdActual= self.call.run_asynchronous_query('dummy_query_string')
+        
+        self.assertEqual(jobIdExpected, jobIdActual)
+
+        mock_job_collection_insert.assert_called_once_with(
+            project_id='measurement-lab',
+            body={'configuration': {'query': {'query': 'dummy_query_string'}}})
+
+    def test_run_asynchronous_query_httpError(self): 
+        self.mock_google_auth_config.jobs.side_effect= MockHttpError(404)
+
+        with self.assertRaises(external.BigQueryCommunicationError):
+            self.call.run_asynchronous_query('dummy_query_string')
+
+    def test_run_asynchronous_query_responseNotReady(self): 
+
+        mock_job_collection= mock.Mock()
+        mock_job_collection_insert= mock.Mock()
+        
+        self.mock_authenticated_service.jobs.return_value= mock_job_collection
+        mock_job_collection.insert.return_value= mock_job_collection_insert
+        mock_job_collection_insert.execute.side_effect= ResponseNotReady()
+        
+        with self.assertRaises(external.BigQueryCommunicationError):
+            self.call.run_asynchronous_query('dummy_query_string')
+
+    def test_create_BigQueryCall_HttpError(self): 
+
+        self.mock_google_auth_config.authenticate_with_google.side_effect= MockHttpError(404)
+
+        with self.assertRaises(external.BigQueryCommunicationError):
+           external.create_BigQueryCall(self.mock_google_auth_config)  
 
 class BigQueryJobResultCollectorTest(unittest.TestCase):
 
