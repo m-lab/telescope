@@ -290,54 +290,49 @@ class BigQueryJobResultCollector(object):
         return parsed_rows, page_token
 
 
+def create_BigQueryCall(google_auth_config):
+    try:
+        authenticated_service = google_auth_config.authenticate_with_google()
+    except (SSLError, HttpError, httplib2.ServerNotFoundError,
+            ResponseNotReady) as e:
+        raise BigQueryCommunicationError(
+            "Failed to communicate with BigQuery during authentication", e)
+
+    return BigQueryCall(google_auth_config, authenticated_service)
+
+
 class BigQueryCall:
 
-    def __init__(self, google_auth_config):
+    def __init__(self, google_auth_config, authenticated_service):
         self.logger = logging.getLogger('telescope')
+        self._authenticated_service = authenticated_service
 
         try:
-            self.authenticated_service = (
-                google_auth_config.authenticate_with_google())
             self.project_id = google_auth_config.project_id
-        except (SSLError, AttributeError, HttpError,
-                httplib2.ServerNotFoundError, ResponseNotReady) as e:
-            raise BigQueryCommunicationError(None, e)
+        except (AttributeError) as e:
+            raise APIConfigError()
 
     def retrieve_job_data(self, job_id):
         result_collector = BigQueryJobResultCollector(
-            self.authenticated_service.jobs(), self.project_id)
+            self._authenticated_service.jobs(), self.project_id)
         return result_collector.collect_results(job_id)
 
-    def run_asynchronous_query(self, query_string, batch_mode=False):
+    def run_asynchronous_query(self, query_string):
         job_reference_id = None
 
-        if self.project_id is None:
-            self.logger.error(
-                'Cannot continue since I have not found a project id.')
-            return None
-
         try:
-            job_collection = self.authenticated_service.jobs()
+            job_collection = self._authenticated_service.jobs()
             job_definition = {
                 'configuration': {'query': {'query': query_string}}
             }
-
-            if batch_mode is True:
-                job_definition['configuration']['query']['priority'] = 'BATCH'
 
             job_collection_insert = job_collection.insert(
                 projectId=self.project_id,
                 body=job_definition).execute()
             job_reference_id = job_collection_insert['jobReference']['jobId']
-        except (HttpError, ResponseNotReady) as caught_http_error:
-            self.logger.error(
-                'HTTP error when running asynchronous query: {error}'.format(
-                    error=caught_http_error.resp))
-        except (Exception,
-                httplib2.ServerNotFoundError) as caught_generic_error:
-            self.logger.error(
-                'Unknown error when running asynchronous query: {error}'.format(
-                    error=caught_generic_error))
+        except (HttpError, ResponseNotReady) as e:
+            raise BigQueryCommunicationError(
+                "Failed to communicate with BigQuery", e)
 
         return job_reference_id
 
@@ -359,7 +354,7 @@ class BigQueryCall:
 
             while True:
                 try:
-                    job_collection = query_object.authenticated_service.jobs()
+                    job_collection = query_object._authenticated_service.jobs()
                     job_collection_state = job_collection.get(
                         projectId=self.project_id,
                         jobId=job_id).execute()

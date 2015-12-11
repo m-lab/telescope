@@ -142,7 +142,7 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -187,8 +187,7 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all],
-  [plx.google:m_lab.2014_02.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -229,7 +228,7 @@ SELECT
   8 * (web100_log_entry.snap.HCThruOctetsReceived /
        web100_log_entry.snap.Duration) AS upload_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -266,7 +265,7 @@ SELECT
   web100_log_entry.log_time AS timestamp,
   (web100_log_entry.snap.SumRTT / web100_log_entry.snap.CountRTT) AS average_rtt
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -309,7 +308,7 @@ SELECT
   web100_log_entry.log_time AS timestamp,
   web100_log_entry.snap.MinRTT AS minimum_rtt
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -353,7 +352,7 @@ SELECT
   (web100_log_entry.snap.SegsRetrans /
    web100_log_entry.snap.DataSegsOut) AS packet_retransmit_rate
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -399,7 +398,7 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -441,7 +440,7 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -484,7 +483,7 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
@@ -527,7 +526,7 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
   connection_spec.data_direction IS NOT NULL
   AND web100_log_entry.is_last_entry IS NOT NULL
