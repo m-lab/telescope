@@ -71,56 +71,63 @@ def _construct_mock_bigquery_response(mock_rows):
     mock_response['totalRows'] = len(mock_response['rows'])
     return mock_response
 
-class BigQueryCallTest(unittest.TestCase): 
 
-    def setUp(self): 
- 
-        self.mock_google_auth_config = mock.Mock()
-        self.mock_authenticated_service= mock.Mock()
-        self.call= external.BigQueryCall(self.mock_google_auth_config, self.mock_authenticated_service)
+class BigQueryCallTest(unittest.TestCase):
 
-    def test_run_asynchronous_query_success(self):   
+    def setUp(self):
 
-        mock_job_collection= mock.Mock()
-        mock_job_collection_insert= mock.Mock()
-        
-        self.mock_authenticated_service.jobs.return_value= mock_job_collection
-        mock_job_collection.insert.return_value= mock_job_collection_insert
-        mock_job_collection_insert.execute.return_value= {'jobReference': {'projectId': 'measurement-lab', 'jobId': 'dummy_id'}}
+        self.mock_google_auth_config = mock.Mock(project_id="dummy_project_id")
+        self.mock_authenticated_service = mock.Mock()
+        self.call = external.BigQueryCall(self.mock_google_auth_config,
+                                          self.mock_authenticated_service)
 
-        jobIdExpected= "dummy_id"
-        jobIdActual= self.call.run_asynchronous_query('dummy_query_string')
-        
+    def test_run_asynchronous_query_success(self):
+        mock_job_collection = mock.Mock()
+        mock_job_collection_insert = mock.Mock()
+
+        self.mock_authenticated_service.jobs.return_value = mock_job_collection
+        mock_job_collection.insert.return_value = mock_job_collection_insert
+        mock_job_collection_insert.execute.return_value = {
+            'jobReference':
+            {'projectId': 'dummy_project_id',
+             'jobId': 'dummy_job_id'}
+        }
+
+        jobIdExpected = "dummy_job_id"
+        jobIdActual = self.call.run_asynchronous_query('dummy_query_string')
+
         self.assertEqual(jobIdExpected, jobIdActual)
 
-        mock_job_collection_insert.assert_called_once_with(
-            project_id='measurement-lab',
+        mock_job_collection.insert.assert_called_once_with(
+            projectId='dummy_project_id',
             body={'configuration': {'query': {'query': 'dummy_query_string'}}})
 
-    def test_run_asynchronous_query_httpError(self): 
-        self.mock_google_auth_config.jobs.side_effect= MockHttpError(404)
+    def test_run_asynchronous_query_httpError(self):
+        self.mock_authenticated_service.jobs.side_effect = MockHttpError(404)
 
         with self.assertRaises(external.BigQueryCommunicationError):
             self.call.run_asynchronous_query('dummy_query_string')
 
-    def test_run_asynchronous_query_responseNotReady(self): 
+    def test_run_asynchronous_query_responseNotReady(self):
 
-        mock_job_collection= mock.Mock()
-        mock_job_collection_insert= mock.Mock()
-        
-        self.mock_authenticated_service.jobs.return_value= mock_job_collection
-        mock_job_collection.insert.return_value= mock_job_collection_insert
-        mock_job_collection_insert.execute.side_effect= ResponseNotReady()
-        
+        mock_job_collection = mock.Mock()
+        mock_job_collection_insert = mock.Mock()
+
+        self.mock_authenticated_service.jobs.return_value = mock_job_collection
+        mock_job_collection.insert.return_value = mock_job_collection_insert
+        mock_job_collection_insert.execute.side_effect = ResponseNotReady()
+
         with self.assertRaises(external.BigQueryCommunicationError):
             self.call.run_asynchronous_query('dummy_query_string')
 
-    def test_create_BigQueryCall_HttpError(self): 
+    def test_create_BigQueryCall_HttpError(self):
 
-        self.mock_google_auth_config.authenticate_with_google.side_effect= MockHttpError(404)
+        self.mock_google_auth_config.authenticate_with_google.side_effect = MockHttpError(
+            404)
 
         with self.assertRaises(external.BigQueryCommunicationError):
-           external.create_BigQueryCall(self.mock_google_auth_config)  
+            external.create_BigQueryCall(self.mock_google_auth_config)
+
 
 class BigQueryJobResultCollectorTest(unittest.TestCase):
 

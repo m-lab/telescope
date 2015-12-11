@@ -58,7 +58,7 @@ class BigQueryCommunicationError(Exception):
     def __init__(self, message, cause):
         self.cause = cause
         super(BigQueryCommunicationError, self).__init__(
-            '%s (%s)' % (message, self.cause))  #FERN: something weird with constructor. Fix later, pass tests now.
+            '%s (%s)' % (message, self.cause))
 
 
 class TableDoesNotExist(Exception):
@@ -289,24 +289,27 @@ class BigQueryJobResultCollector(object):
 
         return parsed_rows, page_token
 
+
 def create_BigQueryCall(google_auth_config):
-    try: 
-        authenticated_service= google_auth_config.authenticate_with_google()
-    except (SSLError, HttpError,
-        httplib2.ServerNotFoundError, ResponseNotReady) as e:
-            raise BigQueryCommunicationError(None, e) 
+    try:
+        authenticated_service = google_auth_config.authenticate_with_google()
+    except (SSLError, HttpError, httplib2.ServerNotFoundError,
+            ResponseNotReady) as e:
+        raise BigQueryCommunicationError(
+            "Failed to communicate with BigQuery during authentication", e)
 
     return BigQueryCall(google_auth_config, authenticated_service)
+
 
 class BigQueryCall:
 
     def __init__(self, google_auth_config, authenticated_service):
         self.logger = logging.getLogger('telescope')
-        self._authenticated_service= authenticated_service 
+        self._authenticated_service = authenticated_service
 
         try:
             self.project_id = google_auth_config.project_id
-        except (AttributeError) as e: 
+        except (AttributeError) as e:
             raise APIConfigError()
 
     def retrieve_job_data(self, job_id):
@@ -328,8 +331,9 @@ class BigQueryCall:
                 body=job_definition).execute()
             job_reference_id = job_collection_insert['jobReference']['jobId']
         except (HttpError, ResponseNotReady) as e:
-            raise BigQueryCommunicationError('Query failed with %s:\n %s', e.message)
-   
+            raise BigQueryCommunicationError(
+                "Failed to communicate with BigQuery", e)
+
         return job_reference_id
 
     def monitor_query_queue(self,
