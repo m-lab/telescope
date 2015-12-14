@@ -391,10 +391,13 @@ def process_selector_queue(selector_queue, google_auth_config):
          _) = selector_queue.get(False)
 
         try:
-            bq_query_call = external.create_BigQueryCall(google_auth_config)
+            authenticated_service = external.get_authenticated_service(
+                google_auth_config)
+            bq_query_call = external.BigQueryCall(authenticated_service,
+                                                  google_auth_config.project_id)
             bq_job_id = bq_query_call.run_asynchronous_query(bq_query_string)
         except (SSLError, external.BigQueryJobFailure,
-                external.BigQueryCommunicationError) as caught_error:  #FERN: we'll have to update this if we change what AttributeError does in constructor
+                external.BigQueryCommunicationError) as caught_error:
             logger.warn('Caught request error %s on query, cooling down for a '
                         'minute.', caught_error)
             selector_queue.put((bq_query_string, thread_metadata, data_filepath,

@@ -20,6 +20,7 @@ import httplib2
 import logging
 import os
 import time
+import httplib
 
 from ssl import SSLError
 
@@ -31,10 +32,12 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from oauth2client.tools import run_flow
 
-from httplib import ResponseNotReady
+
+class BigQueryError(Exception):
+    pass
 
 
-class BigQueryJobFailure(Exception):
+class BigQueryJobFailure(BigQueryError):
     """Indicates that a BigQuery job's result was retrieved, but the query failed.
 
     Raised when BigQuery reports a job has failed. Additional attempts to
@@ -43,10 +46,10 @@ class BigQueryJobFailure(Exception):
 
     def __init__(self, http_code, cause):
         self.code = http_code
-        Exception.__init__(self, cause)
+        super(BigQueryJobFailure, self).__init__(cause)
 
 
-class BigQueryCommunicationError(Exception):
+class BigQueryCommunicationError(BigQueryError):
     """An error occurred trying to communicate with BigQuery
 
     This error is raised when the application fails to communicate with BigQuery.
@@ -61,16 +64,16 @@ class BigQueryCommunicationError(Exception):
             '%s (%s)' % (message, self.cause))
 
 
-class TableDoesNotExist(Exception):
+class TableDoesNotExist(BigQueryError):
 
     def __init__(self):
-        Exception.__init__(self)
+        super(TableDoesNotExist, self).__init__()
 
 
-class APIConfigError(Exception):
+class APIConfigError(BigQueryError):
 
     def __init__(self):
-        Exception.__init__(self)
+        super(APIConfigError, self).__init__()
 
 
 class GoogleAPIAuthConfig:
@@ -113,7 +116,7 @@ class GoogleAPIAuth:
                                    flags=GoogleAPIAuthConfig,
                                    http=http)
             self.logger.info(
-                "Successfully authenticated with Google, moving on to building query.")
+                'Successfully authenticated with Google, moving on to building query.')
 
         http = credentials.authorize(http)
 
@@ -290,31 +293,27 @@ class BigQueryJobResultCollector(object):
         return parsed_rows, page_token
 
 
-def create_BigQueryCall(google_auth_config):
+def get_authenticated_service(google_auth_config):
     try:
         authenticated_service = google_auth_config.authenticate_with_google()
     except (SSLError, HttpError, httplib2.ServerNotFoundError,
-            ResponseNotReady) as e:
+            httplib.ResponseNotReady) as e:
         raise BigQueryCommunicationError(
-            "Failed to communicate with BigQuery during authentication", e)
+            'Failed to communicate with BigQuery during authentication', e)
 
-    return BigQueryCall(google_auth_config, authenticated_service)
+    return authenticated_service
 
 
-class BigQueryCall:
+class BigQueryCall(object):
 
-    def __init__(self, google_auth_config, authenticated_service):
+    def __init__(self, authenticated_service, project_id):
         self.logger = logging.getLogger('telescope')
         self._authenticated_service = authenticated_service
-
-        try:
-            self.project_id = google_auth_config.project_id
-        except (AttributeError) as e:
-            raise APIConfigError()
+        self._project_id = project_id
 
     def retrieve_job_data(self, job_id):
         result_collector = BigQueryJobResultCollector(
-            self._authenticated_service.jobs(), self.project_id)
+            self._authenticated_service.jobs(), self._project_id)
         return result_collector.collect_results(job_id)
 
     def run_asynchronous_query(self, query_string):
@@ -327,12 +326,12 @@ class BigQueryCall:
             }
 
             job_collection_insert = job_collection.insert(
-                projectId=self.project_id,
+                projectId=self._project_id,
                 body=job_definition).execute()
             job_reference_id = job_collection_insert['jobReference']['jobId']
-        except (HttpError, ResponseNotReady) as e:
+        except (HttpError, httplib.ResponseNotReady) as e:
             raise BigQueryCommunicationError(
-                "Failed to communicate with BigQuery", e)
+                'Failed to communicate with BigQuery', e)
 
         return job_reference_id
 
@@ -344,7 +343,7 @@ class BigQueryCall:
 
         query_object = query_object or self
 
-        if self.project_id is not None:
+        if self._project_id is not None:
             started_checking = datetime.datetime.utcnow()
 
             notification_identifier = ', '.join(filter(None,
@@ -356,7 +355,7 @@ class BigQueryCall:
                 try:
                     job_collection = query_object._authenticated_service.jobs()
                     job_collection_state = job_collection.get(
-                        projectId=self.project_id,
+                        projectId=self._project_id,
                         jobId=job_id).execute()
                 except (SSLError, Exception, AttributeError, HttpError,
                         httplib2.ServerNotFoundError) as caught_error:

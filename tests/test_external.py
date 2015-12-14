@@ -23,7 +23,7 @@ import unittest
 import apiclient
 import mock
 
-from httplib import ResponseNotReady
+import httplib
 
 sys.path.insert(1, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../telescope')))
@@ -75,13 +75,13 @@ def _construct_mock_bigquery_response(mock_rows):
 class BigQueryCallTest(unittest.TestCase):
 
     def setUp(self):
-
         self.mock_google_auth_config = mock.Mock(project_id="dummy_project_id")
         self.mock_authenticated_service = mock.Mock()
-        self.call = external.BigQueryCall(self.mock_google_auth_config,
-                                          self.mock_authenticated_service)
+        self.call = external.BigQueryCall(self.mock_authenticated_service,
+                                          "dummy_project_id")
 
     def test_run_asynchronous_query_success(self):
+        """BigQueryCall should start a query and return a job_id"""
         mock_job_collection = mock.Mock()
         mock_job_collection_insert = mock.Mock()
 
@@ -93,40 +93,46 @@ class BigQueryCallTest(unittest.TestCase):
              'jobId': 'dummy_job_id'}
         }
 
-        jobIdExpected = "dummy_job_id"
-        jobIdActual = self.call.run_asynchronous_query('dummy_query_string')
-
-        self.assertEqual(jobIdExpected, jobIdActual)
+        job_id_actual = self.call.run_asynchronous_query('dummy_query_string')
+        self.assertEqual('dummy_job_id', job_id_actual)
 
         mock_job_collection.insert.assert_called_once_with(
             projectId='dummy_project_id',
             body={'configuration': {'query': {'query': 'dummy_query_string'}}})
 
     def test_run_asynchronous_query_httpError(self):
+        """BigQueryCall should wrap HttpError to a BigQueryCommunicationError"""
         self.mock_authenticated_service.jobs.side_effect = MockHttpError(404)
 
         with self.assertRaises(external.BigQueryCommunicationError):
             self.call.run_asynchronous_query('dummy_query_string')
 
     def test_run_asynchronous_query_responseNotReady(self):
-
+        """BigQueryCall should wrap HttpError to a BigQueryCommunicationError"""
         mock_job_collection = mock.Mock()
         mock_job_collection_insert = mock.Mock()
 
         self.mock_authenticated_service.jobs.return_value = mock_job_collection
         mock_job_collection.insert.return_value = mock_job_collection_insert
-        mock_job_collection_insert.execute.side_effect = ResponseNotReady()
+        mock_job_collection_insert.execute.side_effect = httplib.ResponseNotReady(
+        )
 
         with self.assertRaises(external.BigQueryCommunicationError):
             self.call.run_asynchronous_query('dummy_query_string')
 
-    def test_create_BigQueryCall_HttpError(self):
 
-        self.mock_google_auth_config.authenticate_with_google.side_effect = MockHttpError(
-            404)
+class GetAuthenticatedServiceTest(unittest.TestCase):
+
+    def setUp(self):
+        self.mock_google_auth_config = mock.Mock(project_id="dummy_project_id")
+
+    def test_get_authenticated_service_HttpError(self):
+        """Should wrap HttpError to BigQueryCommunicationError"""
+        self.mock_google_auth_config.authenticate_with_google.side_effect = (
+            MockHttpError(404))
 
         with self.assertRaises(external.BigQueryCommunicationError):
-            external.create_BigQueryCall(self.mock_google_auth_config)
+            external.get_authenticated_service(self.mock_google_auth_config)
 
 
 class BigQueryJobResultCollectorTest(unittest.TestCase):
