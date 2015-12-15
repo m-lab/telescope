@@ -396,7 +396,7 @@ def process_selector_queue(selector_queue, google_auth_config):
             bq_query_call = external.BigQueryCall(authenticated_service,
                                                   google_auth_config.project_id)
             bq_job_id = bq_query_call.run_asynchronous_query(bq_query_string)
-        except (SSLError, external.BigQueryJobFailure,
+        except (external.BigQueryJobFailure,
                 external.BigQueryCommunicationError) as caught_error:
             logger.warn('Caught request error %s on query, cooling down for a '
                         'minute.', caught_error)

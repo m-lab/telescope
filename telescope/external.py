@@ -16,11 +16,11 @@
 # limitations under the License.
 
 import datetime
+import httplib
 import httplib2
 import logging
 import os
 import time
-import httplib
 
 from ssl import SSLError
 
@@ -343,49 +343,47 @@ class BigQueryCall(object):
 
         query_object = query_object or self
 
-        if self._project_id is not None:
-            started_checking = datetime.datetime.utcnow()
+        started_checking = datetime.datetime.utcnow()
 
-            notification_identifier = ', '.join(filter(None,
-                                                       job_metadata.values()))
-            self.logger.info('Queued request for %s, received job id: %s',
-                             notification_identifier, job_id)
+        notification_identifier = ', '.join(filter(None, job_metadata.values()))
+        self.logger.info('Queued request for %s, received job id: %s',
+                         notification_identifier, job_id)
 
-            while True:
-                try:
-                    job_collection = query_object._authenticated_service.jobs()
-                    job_collection_state = job_collection.get(
-                        projectId=self._project_id,
-                        jobId=job_id).execute()
-                except (SSLError, Exception, AttributeError, HttpError,
-                        httplib2.ServerNotFoundError) as caught_error:
-                    self.logger.warn(
-                        'Encountered error (%s) monitoring for %s, could '
-                        'be temporary, not bailing out.', caught_error,
-                        notification_identifier)
-                    job_collection_state = None
+        while True:
+            try:
+                job_collection = query_object._authenticated_service.jobs()
+                job_collection_state = job_collection.get(
+                    projectId=self._project_id,
+                    jobId=job_id).execute()
+            except (SSLError, Exception, AttributeError, HttpError,
+                    httplib2.ServerNotFoundError) as caught_error:
+                self.logger.warn(
+                    'Encountered error (%s) monitoring for %s, could '
+                    'be temporary, not bailing out.', caught_error,
+                    notification_identifier)
+                job_collection_state = None
 
-                if job_collection_state is not None:
-                    time_waiting = int((datetime.datetime.utcnow() -
-                                        started_checking).total_seconds())
+            if job_collection_state is not None:
+                time_waiting = int((datetime.datetime.utcnow() -
+                                    started_checking).total_seconds())
 
-                    if job_collection_state['status']['state'] == 'RUNNING':
-                        self.logger.info(
-                            'Waiting for %s to complete, spent %d seconds so '
-                            'far.', notification_identifier, time_waiting)
-                        time.sleep(10)
-                    elif job_collection_state['status']['state'] == 'PENDING':
-                        self.logger.info(
-                            'Waiting for %s to submit, spent %d seconds so '
-                            'far.', notification_identifier, time_waiting)
-                        time.sleep(60)
-                    elif (
-                        (job_collection_state['status']['state'] == 'DONE') and
-                            callback_function is not None):
-                        self.logger.info('Found completion status for %s.',
-                                         notification_identifier)
-                        callback_function(job_id, query_object=self)
-                        break
-                    else:
-                        raise Exception('UnknownBigQueryResponse')
+                if job_collection_state['status']['state'] == 'RUNNING':
+                    self.logger.info(
+                        'Waiting for %s to complete, spent %d seconds so '
+                        'far.', notification_identifier, time_waiting)
+                    time.sleep(10)
+                elif job_collection_state['status']['state'] == 'PENDING':
+                    self.logger.info(
+                        'Waiting for %s to submit, spent %d seconds so '
+                        'far.', notification_identifier, time_waiting)
+                    time.sleep(60)
+                elif (
+                    (job_collection_state['status']['state'] == 'DONE') and
+                        callback_function is not None):
+                    self.logger.info('Found completion status for %s.',
+                                     notification_identifier)
+                    callback_function(job_id, query_object=self)
+                    break
+                else:
+                    raise Exception('UnknownBigQueryResponse')
         return None
