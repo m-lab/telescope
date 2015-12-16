@@ -79,7 +79,7 @@ class BigQueryCallTest(unittest.TestCase):
                                           'dummy_project_id')
 
     def test_run_asynchronous_query_success(self):
-        """BigQueryCall should start a query and return a job_id"""
+        """BigQueryCall should start a query and return a job_id."""
         mock_job_collection = mock.Mock()
         mock_job_collection_insert = mock.Mock()
 
@@ -99,14 +99,14 @@ class BigQueryCallTest(unittest.TestCase):
             body={'configuration': {'query': {'query': 'dummy_query_string'}}})
 
     def test_run_asynchronous_query_HttpError(self):
-        """BigQueryCall should wrap HttpError to a BigQueryCommunicationError"""
+        """BigQueryCall should wrap HttpError to a BigQueryCommunicationError."""
         self.mock_authenticated_service.jobs.side_effect = MockHttpError(404)
 
         with self.assertRaises(external.BigQueryCommunicationError):
             self.call.run_asynchronous_query('dummy_query_string')
 
     def test_run_asynchronous_query_ResponseNotReady(self):
-        """BigQueryCall should wrap ResponseNotReady to a BigQueryCommunicationError"""
+        """BigQueryCall should wrap ResponseNotReady to a BigQueryCommunicationError."""
         mock_job_collection = mock.Mock()
         mock_job_collection_insert = mock.Mock()
 
@@ -125,7 +125,7 @@ class GetAuthenticatedServiceTest(unittest.TestCase):
         self.mock_google_auth_config = mock.Mock(project_id='dummy_project_id')
 
     def test_get_authenticated_service_HttpError(self):
-        """Should wrap HttpError to BigQueryCommunicationError"""
+        """Should wrap HttpError to BigQueryCommunicationError."""
         self.mock_google_auth_config.authenticate_with_google.side_effect = (
             MockHttpError(404))
 
@@ -133,14 +133,15 @@ class GetAuthenticatedServiceTest(unittest.TestCase):
             external.get_authenticated_service(self.mock_google_auth_config)
 
     def test_get_authenticated_service_success(self):
-        """Should return an authenticated_service"""
+        """Should succeed when the call to authenticate_with_google succeeds."""
         mock_authenticated_service = mock.Mock()
-        self.mock_google_auth_config.authenticate_with_google.return_value = mock_authenticated_service
+        self.mock_google_auth_config.authenticate_with_google.return_value = (
+            mock_authenticated_service)
 
         authenticated_service_actual = external.get_authenticated_service(
             self.mock_google_auth_config)
         self.assertEqual(authenticated_service_actual,
-                         authenticated_service_actual)
+                         mock_authenticated_service)
 
 
 class BigQueryJobResultCollectorTest(unittest.TestCase):
