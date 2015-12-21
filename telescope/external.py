@@ -16,6 +16,7 @@
 # limitations under the License.
 
 import datetime
+import httplib
 import httplib2
 import logging
 import os
@@ -31,10 +32,12 @@ from oauth2client.client import flow_from_clientsecrets
 from oauth2client.file import Storage
 from oauth2client.tools import run_flow
 
-from httplib import ResponseNotReady
+
+class BigQueryError(Exception):
+    pass
 
 
-class BigQueryJobFailure(Exception):
+class BigQueryJobFailure(BigQueryError):
     """Indicates that a BigQuery job's result was retrieved, but the query failed.
 
     Raised when BigQuery reports a job has failed. Additional attempts to
@@ -43,10 +46,10 @@ class BigQueryJobFailure(Exception):
 
     def __init__(self, http_code, cause):
         self.code = http_code
-        Exception.__init__(self, cause)
+        super(BigQueryJobFailure, self).__init__(cause)
 
 
-class BigQueryCommunicationError(Exception):
+class BigQueryCommunicationError(BigQueryError):
     """An error occurred trying to communicate with BigQuery
 
     This error is raised when the application fails to communicate with BigQuery.
@@ -58,19 +61,19 @@ class BigQueryCommunicationError(Exception):
     def __init__(self, message, cause):
         self.cause = cause
         super(BigQueryCommunicationError, self).__init__(
-            '%s (%s)' % (message, self.cause))  #FERN: something weird with constructor. Fix later, pass tests now.
+            '%s (%s)' % (message, self.cause))
 
 
-class TableDoesNotExist(Exception):
-
-    def __init__(self):
-        Exception.__init__(self)
-
-
-class APIConfigError(Exception):
+class TableDoesNotExist(BigQueryError):
 
     def __init__(self):
-        Exception.__init__(self)
+        super(TableDoesNotExist, self).__init__()
+
+
+class APIConfigError(BigQueryError):
+
+    def __init__(self):
+        super(APIConfigError, self).__init__()
 
 
 class GoogleAPIAuthConfig:
@@ -113,7 +116,7 @@ class GoogleAPIAuth:
                                    flags=GoogleAPIAuthConfig,
                                    http=http)
             self.logger.info(
-                "Successfully authenticated with Google, moving on to building query.")
+                'Successfully authenticated with Google, moving on to building query.')
 
         http = credentials.authorize(http)
 
@@ -290,29 +293,30 @@ class BigQueryJobResultCollector(object):
         return parsed_rows, page_token
 
 
-class BigQueryCall:
+def get_authenticated_service(google_auth_config):
+    try:
+        authenticated_service = google_auth_config.authenticate_with_google()
+    except (SSLError, HttpError, httplib2.ServerNotFoundError,
+            httplib.ResponseNotReady) as e:
+        raise BigQueryCommunicationError(
+            'Failed to communicate with BigQuery during authentication', e)
+    return authenticated_service
 
-    def __init__(self, google_auth_config, authenticated_service):
+
+class BigQueryCall(object):
+
+    def __init__(self, authenticated_service, project_id):
         self.logger = logging.getLogger('telescope')
-        self._authenticated_service= authenticated_service #FERN: does authenticated_service.jobs keep changing? if not: replace this with jobs
-
-        try:
-            self.project_id = google_auth_config.project_id
-        except (AttributeError) as e: #FERN: make sure we're catching the right thing
-            raise BigQueryCommunicationError(None, e)  #FERN: feels wrong
+        self._authenticated_service = authenticated_service
+        self._project_id = project_id
 
     def retrieve_job_data(self, job_id):
         result_collector = BigQueryJobResultCollector(
-            self._authenticated_service.jobs(), self.project_id)
+            self._authenticated_service.jobs(), self._project_id)
         return result_collector.collect_results(job_id)
 
     def run_asynchronous_query(self, query_string):
         job_reference_id = None
-
-        if self.project_id is None:
-            self.logger.error(
-                'Cannot continue since I have not found a project id.')
-            return None
 
         try:
             job_collection = self._authenticated_service.jobs()
@@ -321,14 +325,12 @@ class BigQueryCall:
             }
 
             job_collection_insert = job_collection.insert(
-                projectId=self.project_id,
+                projectId=self._project_id,
                 body=job_definition).execute()
             job_reference_id = job_collection_insert['jobReference']['jobId']
-        except (HttpError, ResponseNotReady) as e:
-            raise BigQueryCommunicationError('Query failed with %s:\n %s', e.message)
-        except Exception as e: #FERN: feels wrong
-            raise BigQueryCommunicationError('Query failed with %s:\n %s', e.message)  #FERN: should the print outs look identical? also formatting
-
+        except (HttpError, httplib.ResponseNotReady) as e:
+            raise BigQueryCommunicationError(
+                'Failed to communicate with BigQuery', e)
         return job_reference_id
 
     def monitor_query_queue(self,
@@ -339,49 +341,47 @@ class BigQueryCall:
 
         query_object = query_object or self
 
-        if self.project_id is not None:
-            started_checking = datetime.datetime.utcnow()
+        started_checking = datetime.datetime.utcnow()
 
-            notification_identifier = ', '.join(filter(None,
-                                                       job_metadata.values()))
-            self.logger.info('Queued request for %s, received job id: %s',
-                             notification_identifier, job_id)
+        notification_identifier = ', '.join(filter(None, job_metadata.values()))
+        self.logger.info('Queued request for %s, received job id: %s',
+                         notification_identifier, job_id)
 
-            while True:
-                try:
-                    job_collection = query_object._authenticated_service.jobs()  #FERN: make sure if query_object: we can still call _authenticated. else: resolve
-                    job_collection_state = job_collection.get(
-                        projectId=self.project_id,
-                        jobId=job_id).execute()
-                except (SSLError, Exception, AttributeError, HttpError,
-                        httplib2.ServerNotFoundError) as caught_error:
-                    self.logger.warn(
-                        'Encountered error (%s) monitoring for %s, could '
-                        'be temporary, not bailing out.', caught_error,
-                        notification_identifier)
-                    job_collection_state = None
+        while True:
+            try:
+                job_collection = query_object._authenticated_service.jobs()
+                job_collection_state = job_collection.get(
+                    projectId=self._project_id,
+                    jobId=job_id).execute()
+            except (SSLError, Exception, AttributeError, HttpError,
+                    httplib2.ServerNotFoundError) as caught_error:
+                self.logger.warn(
+                    'Encountered error (%s) monitoring for %s, could '
+                    'be temporary, not bailing out.', caught_error,
+                    notification_identifier)
+                job_collection_state = None
 
-                if job_collection_state is not None:
-                    time_waiting = int((datetime.datetime.utcnow() -
-                                        started_checking).total_seconds())
+            if job_collection_state is not None:
+                time_waiting = int((datetime.datetime.utcnow() -
+                                    started_checking).total_seconds())
 
-                    if job_collection_state['status']['state'] == 'RUNNING':
-                        self.logger.info(
-                            'Waiting for %s to complete, spent %d seconds so '
-                            'far.', notification_identifier, time_waiting)
-                        time.sleep(10)
-                    elif job_collection_state['status']['state'] == 'PENDING':
-                        self.logger.info(
-                            'Waiting for %s to submit, spent %d seconds so '
-                            'far.', notification_identifier, time_waiting)
-                        time.sleep(60)
-                    elif (
-                        (job_collection_state['status']['state'] == 'DONE') and
-                            callback_function is not None):
-                        self.logger.info('Found completion status for %s.',
-                                         notification_identifier)
-                        callback_function(job_id, query_object=self)
-                        break
-                    else:
-                        raise Exception('UnknownBigQueryResponse')
+                if job_collection_state['status']['state'] == 'RUNNING':
+                    self.logger.info(
+                        'Waiting for %s to complete, spent %d seconds so '
+                        'far.', notification_identifier, time_waiting)
+                    time.sleep(10)
+                elif job_collection_state['status']['state'] == 'PENDING':
+                    self.logger.info(
+                        'Waiting for %s to submit, spent %d seconds so '
+                        'far.', notification_identifier, time_waiting)
+                    time.sleep(60)
+                elif (
+                    (job_collection_state['status']['state'] == 'DONE') and
+                        callback_function is not None):
+                    self.logger.info('Found completion status for %s.',
+                                     notification_identifier)
+                    callback_function(job_id, query_object=self)
+                    break
+                else:
+                    raise Exception('UnknownBigQueryResponse')
         return None
