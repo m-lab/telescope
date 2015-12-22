@@ -163,20 +163,17 @@ class BigQueryQueryGenerator(object):
                               'FROM\n\t{table}\n'
                               'WHERE\n\t{conditional_list}')
         non_null_fields = ['connection_spec.data_direction',
-                           'web100_log_entry.is_last_entry',
                            'web100_log_entry.snap.HCThruOctetsAcked',
                            'web100_log_entry.snap.CongSignals',
                            'web100_log_entry.connection_spec.remote_ip',
                            'web100_log_entry.connection_spec.local_ip']
-        tool_specific_conditions = ['project = 0',
-                                    'web100_log_entry.is_last_entry = True']
 
         non_null_conditions = []
         for field in non_null_fields:
             non_null_conditions.append('%s IS NOT NULL' % field)
 
         conditional_list_string = '\n\tAND '.join(non_null_conditions +
-                                                  tool_specific_conditions)
+                                                  ['project = 0'])
 
         if 'data_direction' in self._conditional_dict:
             conditional_list_string += '\n\tAND %s' % (
