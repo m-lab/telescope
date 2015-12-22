@@ -173,7 +173,7 @@ class BigQueryQueryGenerator(object):
             non_null_conditions.append('%s IS NOT NULL' % field)
 
         conditional_list_string = '\n\tAND '.join(non_null_conditions +
-                                                ['project = 0'])
+                                                  ['project = 0'])
 
         if 'data_direction' in self._conditional_dict:
             conditional_list_string += '\n\tAND %s' % (
