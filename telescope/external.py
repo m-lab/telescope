@@ -300,7 +300,6 @@ def get_authenticated_service(google_auth_config):
             httplib.ResponseNotReady) as e:
         raise BigQueryCommunicationError(
             'Failed to communicate with BigQuery during authentication', e)
-
     return authenticated_service
 
 
@@ -332,7 +331,6 @@ class BigQueryCall(object):
         except (HttpError, httplib.ResponseNotReady) as e:
             raise BigQueryCommunicationError(
                 'Failed to communicate with BigQuery', e)
-
         return job_reference_id
 
     def monitor_query_queue(self,
