@@ -23,7 +23,6 @@ import logging
 import os
 import Queue
 import random
-from ssl import SSLError
 import threading
 import time
 
@@ -447,14 +446,14 @@ def main(args):
 
     ip_translator_factory = iptranslation.IPTranslationStrategyFactory()
     mlab_site_resolver = mlab.MLabSiteResolver()
-    for selector in selectors:
+    for data_selector in selectors:
         thread_metadata = {
-            'date': selector.start_time.strftime('%Y-%m-%d-%H%M%S'),
-            'duration': duration_to_string(selector.duration),
-            'site': selector.site,
-            'client_provider': selector.client_provider,
-            'client_country': selector.client_country,
-            'metric': selector.metric
+            'date': data_selector.start_time.strftime('%Y-%m-%d-%H%M%S'),
+            'duration': duration_to_string(data_selector.duration),
+            'site': data_selector.site,
+            'client_provider': data_selector.client_provider,
+            'client_country': data_selector.client_country,
+            'metric': data_selector.metric
         }
         data_filepath = utils.build_filename(
             args.output, thread_metadata['date'], thread_metadata['duration'],
@@ -473,13 +472,14 @@ def main(args):
             ('Generating Query for subset of {site}, {client_provider}, '
              '{date}, {duration}.').format(**thread_metadata))
 
-        selector.ip_translation_spec.params['maxmind_dir'] = args.maxminddir
+        data_selector.ip_translation_spec.params['maxmind_dir'] = (
+            args.maxminddir)
 
         try:
             ip_translator = ip_translator_factory.create(
-                selector.ip_translation_spec)
+                data_selector.ip_translation_spec)
             bq_query_string = generate_query(
-                selector, ip_translator, mlab_site_resolver)
+                data_selector, ip_translator, mlab_site_resolver)
         except MLabServerResolutionFailed as caught_error:
             logger.error('Failed to resolve M-Lab servers: %s', caught_error)
             # This error is fatal, so bail out here.
