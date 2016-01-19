@@ -22,7 +22,6 @@ import sys
 import unittest
 
 import mock
-from mock import patch
 
 sys.path.insert(1, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '../telescope')))
