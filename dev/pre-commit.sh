@@ -16,4 +16,6 @@
 # limitations under the License.
 
 # Block the commit if it breaks unit tests or formatting
-python -m unittest discover && yapf --diff --recursive --style google ./
+python -m unittest discover && \
+  yapf --diff --recursive --style google ./ && \
+  pyflakes telescope/*.py tests/*.py
