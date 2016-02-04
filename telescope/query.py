@@ -159,7 +159,7 @@ class BigQueryQueryGenerator(object):
         built_query_format = ('SELECT\n\t{select_clauses}\n'
                               'FROM\n\t{table}\n'
                               'WHERE\n\t{conditional_list}')
-        conditional_list_string = '' 
+        conditional_list_string = ''
 
         if 'data_direction' in self._conditional_dict:
             conditional_list_string += self._conditional_dict['data_direction']
@@ -207,14 +207,15 @@ class BigQueryQueryGenerator(object):
         self._conditional_dict['log_time'].add(new_statement)
 
     def _add_data_direction_conditional(self, metric):
-        conditional= ''
+        conditional = ''
         if _is_server_to_client_metric(metric):
             data_direction = 1
         else:
             data_direction = 0
-            conditional+= '\n\tAND connection_spec.data_direction IS NOT NULL' 
-        self._conditional_dict['data_direction'] = ( 
-            'connection_spec.data_direction = %d' % data_direction + conditional)
+            conditional += '\n\tAND connection_spec.data_direction IS NOT NULL'
+        self._conditional_dict['data_direction'] = (
+            'connection_spec.data_direction = %d' % data_direction +
+            conditional)
 
     def _add_client_ip_blocks_conditional(self, client_ip_blocks):
         # remove duplicates, warn if any are found
