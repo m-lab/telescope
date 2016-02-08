@@ -159,22 +159,11 @@ class BigQueryQueryGenerator(object):
         built_query_format = ('SELECT\n\t{select_clauses}\n'
                               'FROM\n\t{table}\n'
                               'WHERE\n\t{conditional_list}')
-        non_null_fields = ['connection_spec.data_direction',
-                           'web100_log_entry.snap.HCThruOctetsAcked',
-                           'web100_log_entry.snap.CongSignals',
-                           'web100_log_entry.connection_spec.remote_ip',
-                           'web100_log_entry.connection_spec.local_ip']
-
-        non_null_conditions = []
-        for field in non_null_fields:
-            non_null_conditions.append('%s IS NOT NULL' % field)
-
-        conditional_list_string = '\n\tAND '.join(non_null_conditions +
-                                                  ['project = 0'])
+        conditional_list_string = ''
 
         if 'data_direction' in self._conditional_dict:
-            conditional_list_string += '\n\tAND %s' % (
-                self._conditional_dict['data_direction'])
+            conditional_list_string += self._conditional_dict['data_direction']
+
         conditional_list_string += '\n\t AND %s' % (
             _create_test_validity_conditional(self._metric))
 
@@ -219,12 +208,15 @@ class BigQueryQueryGenerator(object):
         self._conditional_dict['log_time'].add(new_statement)
 
     def _add_data_direction_conditional(self, metric):
+        conditional = ''
         if _is_server_to_client_metric(metric):
             data_direction = 1
         else:
             data_direction = 0
+            conditional += '\n\tAND connection_spec.data_direction IS NOT NULL'
         self._conditional_dict['data_direction'] = (
-            'connection_spec.data_direction = %d' % data_direction)
+            'connection_spec.data_direction = %d' % data_direction +
+            conditional)
 
     def _add_client_ip_blocks_conditional(self, client_ip_blocks):
         # remove duplicates, warn if any are found

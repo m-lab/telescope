@@ -144,13 +144,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -187,13 +181,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -226,13 +214,8 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 0
+  connection_spec.data_direction = 0
+  AND connection_spec.data_direction IS NOT NULL
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -261,13 +244,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -302,13 +279,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -344,13 +315,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -388,13 +353,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -428,13 +387,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -469,13 +422,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -510,13 +457,7 @@ SELECT
 FROM
   plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
