@@ -142,17 +142,9 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -187,18 +179,9 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all],
-  [plx.google:m_lab.2014_02.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -229,17 +212,10 @@ SELECT
   8 * (web100_log_entry.snap.HCThruOctetsReceived /
        web100_log_entry.snap.Duration) AS upload_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 0
+  connection_spec.data_direction = 0
+  AND connection_spec.data_direction IS NOT NULL
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -266,17 +242,9 @@ SELECT
   web100_log_entry.log_time AS timestamp,
   (web100_log_entry.snap.SumRTT / web100_log_entry.snap.CountRTT) AS average_rtt
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -309,17 +277,9 @@ SELECT
   web100_log_entry.log_time AS timestamp,
   web100_log_entry.snap.MinRTT AS minimum_rtt
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -353,17 +313,9 @@ SELECT
   (web100_log_entry.snap.SegsRetrans /
    web100_log_entry.snap.DataSegsOut) AS packet_retransmit_rate
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -399,17 +351,9 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -441,17 +385,9 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -484,17 +420,9 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
@@ -527,17 +455,9 @@ SELECT
           web100_log_entry.snap.SndLimTimeCwnd +
           web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps
 FROM
-  [plx.google:m_lab.2014_01.all]
+  plx.google:m_lab.ndt.all
 WHERE
-  connection_spec.data_direction IS NOT NULL
-  AND web100_log_entry.is_last_entry IS NOT NULL
-  AND web100_log_entry.snap.HCThruOctetsAcked IS NOT NULL
-  AND web100_log_entry.snap.CongSignals IS NOT NULL
-  AND web100_log_entry.connection_spec.remote_ip IS NOT NULL
-  AND web100_log_entry.connection_spec.local_ip IS NOT NULL
-  AND project = 0
-  AND web100_log_entry.is_last_entry = True
-  AND connection_spec.data_direction = 1
+  connection_spec.data_direction = 1
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))

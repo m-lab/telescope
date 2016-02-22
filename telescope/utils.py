@@ -115,10 +115,5 @@ def strip_special_chars(filename):
 
 def create_directory_if_not_exists(directory_name):
     if not os.path.exists(directory_name):
-        try:
-            os.makedirs(directory_name)
-        except OSError:
-            raise ArgumentError(('{0} does not exist, is not readable or '
-                                 'could not be created.').format(
-                                     directory_name))
+        os.makedirs(directory_name)
     return directory_name
