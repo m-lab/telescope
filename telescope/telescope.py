@@ -475,18 +475,10 @@ def main(args):
         data_selector.ip_translation_spec.params['maxmind_dir'] = (
             args.maxminddir)
 
-        try:
-            ip_translator = ip_translator_factory.create(
-                data_selector.ip_translation_spec)
-            bq_query_string = generate_query(
-                data_selector, ip_translator, mlab_site_resolver)
-        except MLabServerResolutionFailed as caught_error:
-            logger.error('Failed to resolve M-Lab servers: %s', caught_error)
-            # This error is fatal, so bail out here.
-            return None
-        except Exception as caught_error:
-            logger.error('Failed to generate queries: %s', caught_error)
-            continue
+        ip_translator = ip_translator_factory.create(
+            data_selector.ip_translation_spec)
+        bq_query_string = generate_query(
+            data_selector, ip_translator, mlab_site_resolver)
 
         if args.savequery:
             bigquery_filepath = utils.build_filename(
