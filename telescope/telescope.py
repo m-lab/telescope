@@ -167,11 +167,13 @@ def write_metric_calculations_to_file(data_filepath,
       (bool) True if the file was written successfully.
     """
     logger = logging.getLogger('telescope')
+    data_keys_order = ['timestamp', 'value']
     try:
         with open(data_filepath, 'w') as data_file_raw:
             if metric_calculations:
                 data_file_csv = csv.DictWriter(
                     data_file_raw,
+                    data_keys_order, 
                     fieldnames=metric_calculations[0].keys(),
                     delimiter=',',
                     quotechar='"',
