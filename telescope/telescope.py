@@ -17,7 +17,6 @@
 
 import argparse
 import copy
-import csv
 import datetime
 import logging
 import os
@@ -30,6 +29,7 @@ import external
 import iptranslation
 import mlab
 import query
+import result_csv
 import selector
 import utils
 
@@ -160,28 +160,14 @@ def write_metric_calculations_to_file(data_filepath,
         data_filepath: (str) File path to which to write data.
         metric_calculations: (list) A list of dictionaries containing the values
           of retrieved metrics.
-        should_write_header: (bool) Indicates whether the output file should
-          contain a header line to identify each column of data.
 
     Returns:
       (bool) True if the file was written successfully.
     """
     logger = logging.getLogger('telescope')
-    fieldnames_ordered = metric_calculations[0].keys()
-    if fieldnames_ordered[0] != 'timestamp':
-        fieldnames_ordered.reverse()
     try:
         with open(data_filepath, 'w') as data_file_raw:
-            if metric_calculations:
-                data_file_csv = csv.DictWriter(
-                    data_file_raw,
-                    fieldnames=fieldnames_ordered,
-                    delimiter=',',
-                    quotechar='"',
-                    quoting=csv.QUOTE_MINIMAL)
-                if should_write_header:
-                    data_file_csv.writeheader()
-                data_file_csv.writerows(metric_calculations)
+            data_file_raw.write(result_csv.metrics_to_csv(metric_calculations))
         return True
     except IOError as caught_error:
         if caught_error.errno == 24:
@@ -189,7 +175,7 @@ def write_metric_calculations_to_file(data_filepath,
                 'When writing raw output, caught %s, trying again shortly.',
                 caught_error)
             write_metric_calculations_to_file(
-                data_filepath, metric_calculations, should_write_header)
+                data_filepath, metric_calculations)
             time.sleep(20)
         else:
             logger.error('When writing raw output, caught %s, cannot move on.',
