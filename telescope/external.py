@@ -58,8 +58,8 @@ class BigQueryCommunicationError(BigQueryError):
 
     def __init__(self, message, cause):
         self.cause = cause
-        super(BigQueryCommunicationError, self).__init__(
-            '%s (%s)' % (message, self.cause))
+        super(BigQueryCommunicationError, self).__init__('%s (%s)' %
+                                                         (message, self.cause))
 
 
 class TableDoesNotExist(BigQueryError):
@@ -101,8 +101,8 @@ class GoogleAPIAuth:
     def authenticate_with_google(self):
 
         flow = flow_from_clientsecrets(
-            os.path.join(os.path.dirname(__file__),
-                         'resources/client_secrets.json'),
+            os.path.join(
+                os.path.dirname(__file__), 'resources/client_secrets.json'),
             scope='https://www.googleapis.com/auth/bigquery')
         storage = Storage(self.credentials_filepath)
         credentials = storage.get()
@@ -207,11 +207,10 @@ class BigQueryJobResultCollector(object):
             except BigQueryCommunicationError as e:
                 if retries_remaining > 0:
                     sleep_seconds = 10
-                    logging.warning(
-                        ('Failed to communicate with BigQuery to retrieve '
-                         'job %s. Retrying in %d seconds... (%d attempts '
-                         'remaining)'), job_id, sleep_seconds,
-                        retries_remaining)
+                    logging.warning((
+                        'Failed to communicate with BigQuery to retrieve '
+                        'job %s. Retrying in %d seconds... (%d attempts '
+                        'remaining)'), job_id, sleep_seconds, retries_remaining)
                     time.sleep(sleep_seconds)
                     retries_remaining -= 1
                 else:
@@ -375,9 +374,8 @@ class BigQueryCall(object):
                         'Waiting for %s to submit, spent %d seconds so '
                         'far.', notification_identifier, time_waiting)
                     time.sleep(60)
-                elif (
-                    (job_collection_state['status']['state'] == 'DONE') and
-                        callback_function is not None):
+                elif ((job_collection_state['status']['state'] == 'DONE') and
+                      callback_function is not None):
                     self.logger.info('Found completion status for %s.',
                                      notification_identifier)
                     callback_function(job_id, query_object=self)

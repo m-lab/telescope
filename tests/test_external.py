@@ -23,8 +23,8 @@ import unittest
 import apiclient
 import mock
 
-sys.path.insert(1, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../telescope')))
+sys.path.insert(1, os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../telescope')))
 import external
 
 
@@ -181,7 +181,7 @@ class BigQueryJobResultCollectorTest(unittest.TestCase):
         mock_result_rows1 = [{'fieldA': 'valueA1',
                               'fieldB': 'valueB1'},
                              {'fieldA': 'valueA2',
-                              'fieldB': 'valueB2'}]
+                              'fieldB': 'valueB2'}]  # yapf: disable
         mock_response1 = _construct_mock_bigquery_response(mock_result_rows1)
         mock_response1['pageToken'] = 'dummy_page_token'
 

@@ -170,13 +170,13 @@ class SelectorFileParser(object):
             list: A list of parsed Selector objects.
         """
         multi_selector = MultiSelector()
-        multi_selector.duration = self._parse_duration(
-            selector_json['duration'])
+        multi_selector.duration = self._parse_duration(selector_json[
+            'duration'])
         multi_selector.ip_translation_spec = self._parse_ip_translation(
             selector_json['ip_translation'])
 
-        multi_selector.start_times = self._parse_start_times(
-            selector_json['start_times'])
+        multi_selector.start_times = self._parse_start_times(selector_json[
+            'start_times'])
         multi_selector.metrics = selector_json['metrics']
 
         if ('client_providers' in selector_json and
@@ -188,8 +188,8 @@ class SelectorFileParser(object):
             multi_selector.client_countries = _normalize_string_values(
                 selector_json['client_countries'])
         if 'sites' in selector_json and selector_json['sites']:
-            multi_selector.sites = _normalize_string_values(
-                selector_json['sites'])
+            multi_selector.sites = _normalize_string_values(selector_json[
+                'sites'])
 
         return multi_selector.split()
 
@@ -212,9 +212,8 @@ class SelectorFileParser(object):
             datetime: Python datetime for set timestamp string.
         """
         try:
-            timestamp = (
-                datetime.datetime.strptime(start_time_string,
-                                           '%Y-%m-%dT%H:%M:%SZ'))
+            timestamp = (datetime.datetime.strptime(start_time_string,
+                                                    '%Y-%m-%dT%H:%M:%SZ'))
             return utils.make_datetime_utc_aware(timestamp)
         except ValueError:
             raise SelectorParseError('UnsupportedSubsetDateFormat')
@@ -243,17 +242,14 @@ class SelectorFileParser(object):
                 duration_type = re.search('[a-zA-Z]+', segment).group(0)
 
                 if duration_type == 'd':
-                    duration_seconds_to_return += (
-                        datetime.timedelta(
-                            days=numerical_amount).total_seconds())
+                    duration_seconds_to_return += (datetime.timedelta(
+                        days=numerical_amount).total_seconds())
                 elif duration_type == 'h':
-                    duration_seconds_to_return += (
-                        datetime.timedelta(
-                            hours=numerical_amount).total_seconds())
+                    duration_seconds_to_return += (datetime.timedelta(
+                        hours=numerical_amount).total_seconds())
                 elif duration_type == 'm':
-                    duration_seconds_to_return += (
-                        datetime.timedelta(
-                            minutes=numerical_amount).total_seconds())
+                    duration_seconds_to_return += (datetime.timedelta(
+                        minutes=numerical_amount).total_seconds())
                 elif duration_type == 's':
                     duration_seconds_to_return += numerical_amount
                 else:
@@ -352,8 +348,8 @@ class MultiSelectorJsonEncoder(json.JSONEncoder):
             'file_format_version': 1.1,
             'duration': self._encode_duration(selector.duration),
             'metrics': selector.metrics,
-            'ip_translation': self._encode_ip_translation(
-                selector.ip_translation_spec),
+            'ip_translation':
+            self._encode_ip_translation(selector.ip_translation_spec),
             'start_times': self._encode_start_times(selector.start_times)
         }
 

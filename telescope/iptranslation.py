@@ -25,9 +25,9 @@ import re
 class MissingMaxMindError(Exception):
 
     def __init__(self, db_location, io_error):
-        Exception.__init__(
-            self, 'Failed to open MaxMind database at %s\nError: %s' % (
-                db_location, io_error))
+        Exception.__init__(self,
+                           'Failed to open MaxMind database at %s\nError: %s' %
+                           (db_location, io_error))
 
 
 class IPTranslationStrategySpec(object):
@@ -165,8 +165,8 @@ class IPTranslationStrategyMaxMind(IPTranslationStrategy):
         """
         date_string = snapshot_datetime.strftime('%Y%m%d')
         snapshot_filename = 'GeoIPASNum2-%s.csv' % date_string
-        return os.path.join(os.path.dirname(__file__), maxmind_dir,
-                            snapshot_filename)
+        return os.path.join(
+            os.path.dirname(__file__), maxmind_dir, snapshot_filename)
 
     def _parse_maxmind_snapshot(self, snapshot_file):
         """Parses a MaxMind snapshot file into a list of blocks with associated

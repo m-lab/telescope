@@ -30,18 +30,18 @@ class ResultCsvTest(unittest.TestCase):
 
     def test_metrics_to_csv_processes_single_element_list_correctly(self):
         """Single element lists should create one CSV line in correct order."""
-        self.assertEqual('123456,54.6\r\n', result_csv.metrics_to_csv(
-            [{'timestamp': 123456,
-              'download_mbps': 54.6}]))
-        self.assertEqual('123456,54.6\r\n', result_csv.metrics_to_csv(
-            [{'timestamp': 123456,
-              'upload_mbps': 54.6}]))
-        self.assertEqual('123456,54.6\r\n', result_csv.metrics_to_csv(
-            [{'timestamp': 123456,
-              'average_rtt': 54.6}]))
-        self.assertEqual('123456,54.6\r\n', result_csv.metrics_to_csv(
-            [{'timestamp': 123456,
-              'minimum_rtt': 54.6}]))
+        self.assertEqual('123456,54.6\r\n',
+                         result_csv.metrics_to_csv([{'timestamp': 123456,
+                                                     'download_mbps': 54.6}]))
+        self.assertEqual('123456,54.6\r\n',
+                         result_csv.metrics_to_csv([{'timestamp': 123456,
+                                                     'upload_mbps': 54.6}]))
+        self.assertEqual('123456,54.6\r\n',
+                         result_csv.metrics_to_csv([{'timestamp': 123456,
+                                                     'average_rtt': 54.6}]))
+        self.assertEqual('123456,54.6\r\n',
+                         result_csv.metrics_to_csv([{'timestamp': 123456,
+                                                     'minimum_rtt': 54.6}]))
         self.assertEqual('123456,54.6\r\n', result_csv.metrics_to_csv(
             [{'timestamp': 123456,
               'packet_retransmit_rate': 54.6}]))

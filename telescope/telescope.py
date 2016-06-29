@@ -44,16 +44,15 @@ class NoClientNetworkBlocksFound(TelescopeError):
 
     def __init__(self, provider_name):
         Exception.__init__(
-            self,
-            'Could not find IP blocks associated with client provider %s.' % (
-                provider_name))
+            self, 'Could not find IP blocks associated with client provider %s.'
+            % (provider_name))
 
 
 class MLabServerResolutionFailed(TelescopeError):
 
     def __init__(self, inner_exception):
-        Exception.__init__(self, 'Failed to resolve M-Lab server IPs: %s' % (
-            inner_exception.message))
+        Exception.__init__(self, 'Failed to resolve M-Lab server IPs: %s' %
+                           (inner_exception.message))
 
 
 class ExternalQueryHandler(object):
@@ -116,16 +115,14 @@ class ExternalQueryHandler(object):
                 self._has_succeeded = True
             except (ValueError, external.BigQueryJobFailure,
                     external.BigQueryCommunicationError) as caught_error:
-                logger.error(
-                    ('Caught {caught_error} for ({site}, {client_provider}, {metric}, '
-                     '{date}).').format(caught_error=caught_error,
-                                        **
-                                        self._metadata))
+                logger.error((
+                    'Caught {caught_error} for ({site}, {client_provider}, {metric}, '
+                    '{date}).').format(caught_error=caught_error,
+                                       **self._metadata))
             except external.TableDoesNotExist:
-                logger.error(
-                    ('Requested tables for ({site}, {client_provider}, {metric}, {date}'
-                     ') do not exist, moving on.').format(
-                         **self._metadata))
+                logger.error((
+                    'Requested tables for ({site}, {client_provider}, {metric}, {date}'
+                    ') do not exist, moving on.').format(**self._metadata))
                 self._has_failed = True
         return self._has_succeeded
 
@@ -174,8 +171,8 @@ def write_metric_calculations_to_file(data_filepath,
             logger.error(
                 'When writing raw output, caught %s, trying again shortly.',
                 caught_error)
-            write_metric_calculations_to_file(
-                data_filepath, metric_calculations)
+            write_metric_calculations_to_file(data_filepath,
+                                              metric_calculations)
             time.sleep(20)
         else:
             logger.error('When writing raw output, caught %s, cannot move on.',
@@ -394,12 +391,11 @@ def process_selector_queue(selector_queue, google_auth_config):
             bq_job_id = None
 
         if bq_job_id is None:
-            logger.warn(
-                ('No job id returned for {site} of {metric} (concurrent '
-                 'threads: {thread_count}).').format(
-                     thread_count=threading.activeCount(),
-                     **
-                     thread_metadata))
+            logger.warn((
+                'No job id returned for {site} of {metric} (concurrent '
+                'threads: {thread_count}).').format(
+                    thread_count=threading.activeCount(),
+                    **thread_metadata))
             selector_queue.put((bq_query_string, thread_metadata, data_filepath,
                                 True))
             continue
@@ -457,17 +453,17 @@ def main(args):
             continue
 
         logger.debug('Did not find existing data file: %s', data_filepath)
-        logger.debug(
-            ('Generating Query for subset of {site}, {client_provider}, '
-             '{date}, {duration}.').format(**thread_metadata))
+        logger.debug((
+            'Generating Query for subset of {site}, {client_provider}, '
+            '{date}, {duration}.').format(**thread_metadata))
 
         data_selector.ip_translation_spec.params['maxmind_dir'] = (
             args.maxminddir)
 
         ip_translator = ip_translator_factory.create(
             data_selector.ip_translation_spec)
-        bq_query_string = generate_query(
-            data_selector, ip_translator, mlab_site_resolver)
+        bq_query_string = generate_query(data_selector, ip_translator,
+                                         mlab_site_resolver)
 
         if args.savequery:
             bigquery_filepath = utils.build_filename(
@@ -542,19 +538,19 @@ if __name__ == '__main__':
                         nargs='+',
                         default=None,
                         help='Selector JSON datafile(s) to parse.')
-    parser.add_argument(
-        '-v',
-        '--verbosity',
-        action='count',
-        help=('variable output verbosity (e.g., -vv is more than '
-              '-v)'))
-    parser.add_argument(
-        '-o',
-        '--output',
-        default='processed/',
-        help=('Output file path. If the folder does not exist, it'
-              ' will be created.'),
-        type=utils.create_directory_if_not_exists)
+    parser.add_argument('-v',
+                        '--verbosity',
+                        action='count',
+                        help=(
+                            'variable output verbosity (e.g., -vv is more than '
+                            '-v)'))
+    parser.add_argument('-o',
+                        '--output',
+                        default='processed/',
+                        help=(
+                            'Output file path. If the folder does not exist, it'
+                            ' will be created.'),
+                        type=utils.create_directory_if_not_exists)
     parser.add_argument('--maxminddir',
                         default='resources/',
                         help='MaxMind GeoLite ASN snapshot directory.')
@@ -572,18 +568,18 @@ if __name__ == '__main__':
                         default=False,
                         action='store_true',
                         help='Overwrite cached query results if they exist.')
-    parser.add_argument(
-        '--noauth_local_webserver',
-        default=False,
-        action='store_true',
-        help=('Authenticate to Google using another method than a'
-              ' local webserver.'))
-    parser.add_argument(
-        '--credentialspath',
-        dest='credentials_filepath',
-        default='bigquery_credentials.dat',
-        help=('Google API Credentials. If it does not exist, will'
-              ' trigger Google auth.'))
+    parser.add_argument('--noauth_local_webserver',
+                        default=False,
+                        action='store_true',
+                        help=(
+                            'Authenticate to Google using another method than a'
+                            ' local webserver.'))
+    parser.add_argument('--credentialspath',
+                        dest='credentials_filepath',
+                        default='bigquery_credentials.dat',
+                        help=(
+                            'Google API Credentials. If it does not exist, will'
+                            ' trigger Google auth.'))
 
     args = parser.parse_args()
     main(args)

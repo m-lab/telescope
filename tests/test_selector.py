@@ -23,8 +23,8 @@ import os
 import sys
 import unittest
 
-sys.path.insert(1, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../telescope')))
+sys.path.insert(1, os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../telescope')))
 import iptranslation
 import selector
 import utils
@@ -177,8 +177,8 @@ class SelectorFileParserTest(unittest.TestCase):
         client_providers = ['comcast', 'verizon']
         metrics = ['minimum_rtt', 'download_throughput', 'average_rtt']
 
-        for client_provider, site, metric in itertools.product(
-            client_providers, sites, metrics):
+        for client_provider, site, metric in itertools.product(client_providers,
+                                                               sites, metrics):
             selector_copy = copy.copy(selector_base)
             selector_copy.metric = metric
             selector_copy.client_provider = client_provider
@@ -274,7 +274,7 @@ class SelectorFileParserTest(unittest.TestCase):
                                                selector_file_contents)
 
     def testValidInput_v1dot1_Simple_SingleLocationValues_onlyClientProviders(
-        self):
+            self):
         selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",
@@ -302,7 +302,7 @@ class SelectorFileParserTest(unittest.TestCase):
                                                selector_file_contents)
 
     def testValidInput_v1dot1_Simple_SingleLocationValues_onlyClientCountries(
-        self):
+            self):
         selector_file_contents = """{
             "file_format_version": 1.1,
             "duration": "30d",

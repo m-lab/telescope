@@ -21,8 +21,8 @@ import re
 import sys
 import unittest
 
-sys.path.insert(1, os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../telescope')))
+sys.path.insert(1, os.path.abspath(os.path.join(
+    os.path.dirname(__file__), '../telescope')))
 import query
 import utils
 
@@ -404,9 +404,7 @@ WHERE
 """
 
         query_actual = self.generate_download_throughput_query(
-            start_time,
-            end_time,
-            server_ips=['1.1.1.1'])
+            start_time, end_time, server_ips=['1.1.1.1'])
         self.assertQueriesEqual(query_expected, query_actual)
 
     def testDownloadThroughputQuery_OptionalProperty_ClientIPBlocks(self):
@@ -439,8 +437,7 @@ WHERE
 """
 
         query_actual = self.generate_download_throughput_query(
-            start_time,
-            end_time,
+            start_time, end_time,
             client_ip_blocks=[(5, 10)])
         self.assertQueriesEqual(query_expected, query_actual)
 
@@ -474,9 +471,7 @@ WHERE
 """
 
         query_actual = self.generate_download_throughput_query(
-            start_time,
-            end_time,
-            client_country="US")
+            start_time, end_time, client_country="US")
         self.assertQueriesEqual(query_expected, query_actual)
 
 

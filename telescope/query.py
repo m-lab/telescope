@@ -62,21 +62,21 @@ def _create_test_validity_conditional(metric):
 
     conditions = []
     # Must have completed the TCP three-way handshake.
-    conditions.append(
-        ('(web100_log_entry.snap.State = {state_closed}\n\t'
-         '\tOR (web100_log_entry.snap.State >= {state_established}\n\t'
-         '\t\tAND web100_log_entry.snap.State <= {state_time_wait}))').format(
-             state_closed=STATE_CLOSED,
-             state_established=STATE_ESTABLISHED,
-             state_time_wait=STATE_TIME_WAIT))
+    conditions.append((
+        '(web100_log_entry.snap.State = {state_closed}\n\t'
+        '\tOR (web100_log_entry.snap.State >= {state_established}\n\t'
+        '\t\tAND web100_log_entry.snap.State <= {state_time_wait}))').format(
+            state_closed=STATE_CLOSED,
+            state_established=STATE_ESTABLISHED,
+            state_time_wait=STATE_TIME_WAIT))
 
     if _is_server_to_client_metric(metric):
         # Must leave slow start phase of TCP, indicated by reaching
         # congestion at least once.
         conditions.append('web100_log_entry.snap.CongSignals > 0')
         # Must send at least the minimum number of bytes.
-        conditions.append(
-            'web100_log_entry.snap.HCThruOctetsAcked >= %d' % MIN_BYTES)
+        conditions.append('web100_log_entry.snap.HCThruOctetsAcked >= %d' %
+                          MIN_BYTES)
         # Must last for at least the minimum test duration.
         conditions.append(
             ('(web100_log_entry.snap.SndLimTimeRwin +\n\t'
@@ -91,12 +91,12 @@ def _create_test_validity_conditional(metric):
         # Exclude results of tests with fewer than 10 round trip time samples,
         # because there are not enough samples to accurately estimate the RTT.
         if metric == 'minimum_rtt' or metric == 'average_rtt':
-            conditions.append(
-                'web100_log_entry.snap.CountRTT > %u' % MIN_RTT_SAMPLES)
+            conditions.append('web100_log_entry.snap.CountRTT > %u' %
+                              MIN_RTT_SAMPLES)
     else:
         # Must receive at least the minimum number of bytes.
-        conditions.append(
-            'web100_log_entry.snap.HCThruOctetsReceived >= %u' % MIN_BYTES)
+        conditions.append('web100_log_entry.snap.HCThruOctetsReceived >= %u' %
+                          MIN_BYTES)
         # Must last for at least the minimum test duration.
         conditions.append('web100_log_entry.snap.Duration >= %u' % MIN_DURATION)
         # Must not exceed the maximum test duration.
@@ -107,22 +107,21 @@ def _create_test_validity_conditional(metric):
 def _create_select_clauses(metric):
     clauses = ['web100_log_entry.log_time AS timestamp']
     metric_to_clause = {
-        'download_throughput': (
-            '8 * (web100_log_entry.snap.HCThruOctetsAcked /\n\t\t'
-            '(web100_log_entry.snap.SndLimTimeRwin +\n\t\t'
-            ' web100_log_entry.snap.SndLimTimeCwnd +\n\t\t'
-            ' web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps'),
-        'upload_throughput': (
-            '8 * (web100_log_entry.snap.HCThruOctetsReceived /\n\t\t'
-            ' web100_log_entry.snap.Duration) AS upload_mbps'),
-        'minimum_rtt': (
-            'web100_log_entry.snap.MinRTT AS minimum_rtt'),
-        'average_rtt': (
-            '(web100_log_entry.snap.SumRTT / web100_log_entry.snap.CountRTT) '
-            'AS average_rtt'),
-        'packet_retransmit_rate': (
-            '(web100_log_entry.snap.SegsRetrans /\n\t\t'
-            ' web100_log_entry.snap.DataSegsOut) AS packet_retransmit_rate'),
+        'download_throughput':
+        ('8 * (web100_log_entry.snap.HCThruOctetsAcked /\n\t\t'
+         '(web100_log_entry.snap.SndLimTimeRwin +\n\t\t'
+         ' web100_log_entry.snap.SndLimTimeCwnd +\n\t\t'
+         ' web100_log_entry.snap.SndLimTimeSnd)) AS download_mbps'),
+        'upload_throughput':
+        ('8 * (web100_log_entry.snap.HCThruOctetsReceived /\n\t\t'
+         ' web100_log_entry.snap.Duration) AS upload_mbps'),
+        'minimum_rtt': ('web100_log_entry.snap.MinRTT AS minimum_rtt'),
+        'average_rtt':
+        ('(web100_log_entry.snap.SumRTT / web100_log_entry.snap.CountRTT) '
+         'AS average_rtt'),
+        'packet_retransmit_rate':
+        ('(web100_log_entry.snap.SegsRetrans /\n\t\t'
+         ' web100_log_entry.snap.DataSegsOut) AS packet_retransmit_rate'),
     }
     clauses.append(metric_to_clause[metric])
 
@@ -171,13 +170,13 @@ class BigQueryQueryGenerator(object):
         conditional_list_string += '\n\tAND (%s)' % log_times_joined
 
         if 'server_ips' in self._conditional_dict:
-            server_ips_joined = ' OR\n\t\t'.join(
-                self._conditional_dict['server_ips'])
+            server_ips_joined = ' OR\n\t\t'.join(self._conditional_dict[
+                'server_ips'])
             conditional_list_string += '\n\tAND (%s)' % server_ips_joined
 
         if 'client_ip_blocks' in self._conditional_dict:
-            client_ip_blocks_joined = ' OR\n\t\t'.join(
-                self._conditional_dict['client_ip_blocks'])
+            client_ip_blocks_joined = ' OR\n\t\t'.join(self._conditional_dict[
+                'client_ip_blocks'])
             conditional_list_string += '\n\tAND (%s)' % client_ip_blocks_joined
         if 'client_country' in self._conditional_dict:
             conditional_list_string += '\n\tAND %s' % (
@@ -195,15 +194,14 @@ class BigQueryQueryGenerator(object):
             self._conditional_dict['log_time'] = set()
 
         utc_absolutely_utc = utils.unix_timestamp_to_utc_datetime(0)
-        start_time = int(
-            (start_time_datetime - utc_absolutely_utc).total_seconds())
+        start_time = int((start_time_datetime - utc_absolutely_utc
+                         ).total_seconds())
         end_time = int((end_time_datetime - utc_absolutely_utc).total_seconds())
 
         new_statement = (
             '(web100_log_entry.log_time >= {start_time})'
             ' AND (web100_log_entry.log_time < {end_time})').format(
-                start_time=start_time,
-                end_time=end_time)
+                start_time=start_time, end_time=end_time)
 
         self._conditional_dict['log_time'].add(new_statement)
 
@@ -215,8 +213,8 @@ class BigQueryQueryGenerator(object):
             data_direction = 0
             conditional += '\n\tAND connection_spec.data_direction IS NOT NULL'
         self._conditional_dict['data_direction'] = (
-            'connection_spec.data_direction = %d' % data_direction +
-            conditional)
+            'connection_spec.data_direction = %d' % data_direction + conditional
+        )
 
     def _add_client_ip_blocks_conditional(self, client_ip_blocks):
         # remove duplicates, warn if any are found
@@ -232,9 +230,8 @@ class BigQueryQueryGenerator(object):
         for start_block, end_block in client_ip_blocks:
             new_statement = (
                 'PARSE_IP(web100_log_entry.connection_spec.remote_ip) BETWEEN '
-                '{start_block} AND {end_block}').format(
-                    start_block=start_block,
-                    end_block=end_block)
+                '{start_block} AND {end_block}').format(start_block=start_block,
+                                                        end_block=end_block)
             self._conditional_dict['client_ip_blocks'].append(new_statement)
 
     def _add_server_ips_conditional(self, server_ips):
@@ -253,5 +250,5 @@ class BigQueryQueryGenerator(object):
 
     def _add_client_country_conditional(self, client_country):
         self._conditional_dict['client_country'] = (
-            'connection_spec.client_geolocation.country_code = \'%s\'' % (
-                client_country.upper()))
+            'connection_spec.client_geolocation.country_code = \'%s\'' %
+            (client_country.upper()))

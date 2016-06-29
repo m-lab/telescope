@@ -56,8 +56,7 @@ class MLabSiteResolver(object):
 
     def _generate_hostname(self, site_id, node_id):
         hostname = 'ndt.iupui.{node_id}.{site_id}.measurement-lab.org'.format(
-            node_id=node_id,
-            site_id=site_id)
+            node_id=node_id, site_id=site_id)
         return hostname
 
     def _resolve_hostname(self, hostname):

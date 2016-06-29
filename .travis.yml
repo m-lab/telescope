@@ -5,8 +5,8 @@ install:
     - pip install -r requirements.txt
     - pip install -r test-requirements.txt
     - pip install coveralls
-    - pip install yapf==0.5.0
-    - pip install pyflakes==1.0.0
+    - pip install pyflakes==1.2.3
+    - pip install yapf==0.10.0
 script:
     # Run unit tests and calculate code coverage.
     - coverage run --source telescope -m unittest discover
