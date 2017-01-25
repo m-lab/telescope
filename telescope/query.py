@@ -70,6 +70,10 @@ def _create_test_validity_conditional(metric):
             state_established=STATE_ESTABLISHED,
             state_time_wait=STATE_TIME_WAIT))
 
+    # Must have been determined to be unaffected by platform error.
+    conditions.append((
+        'blacklist_flags == 0'))
+
     if _is_server_to_client_metric(metric):
         # Must leave slow start phase of TCP, indicated by reaching
         # congestion at least once.
