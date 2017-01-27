@@ -148,6 +148,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -185,6 +186,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -219,6 +221,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.HCThruOctetsReceived >= 8192
   AND web100_log_entry.snap.Duration >= 9000000
   AND web100_log_entry.snap.Duration < 3600000000
@@ -248,6 +251,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -283,6 +287,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -319,6 +324,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -357,6 +363,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -391,6 +398,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -424,6 +432,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
@@ -458,6 +467,7 @@ WHERE
   AND (web100_log_entry.snap.State = 1
        OR (web100_log_entry.snap.State >= 5
            AND web100_log_entry.snap.State <= 11))
+  AND blacklist_flags == 0
   AND web100_log_entry.snap.CongSignals > 0
   AND web100_log_entry.snap.HCThruOctetsAcked >= 8192
   AND (web100_log_entry.snap.SndLimTimeRwin +
