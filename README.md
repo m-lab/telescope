@@ -1,5 +1,9 @@
 **Measurement Lab: Telescope**
 
+## INACTIVE / DEPRECATED Project
+
+The Telescope project is no longer maintained. Code in the repository will not work with current M-Lab BigQuery tables and views.
+
 [![Build
 Status](https://travis-ci.org/m-lab/telescope.svg?branch=master)](https://travis-ci.org/m-lab/telescope)
 [![Coverage
